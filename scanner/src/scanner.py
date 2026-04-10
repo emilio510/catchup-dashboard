@@ -4,7 +4,7 @@ import json
 import logging
 from pathlib import Path
 
-from src.calendar_scanner import CalendarEvent, fetch_calendar_events, find_related_chat_names, format_events_for_classifier
+from src.calendar_scanner import CalendarEvent, events_to_triage_items, fetch_calendar_events, find_related_chat_names, format_events_for_classifier
 from src.classifier import Classifier
 from src.config import ScannerConfig
 from src.database import push_to_database
@@ -96,24 +96,10 @@ class Scanner:
                 )
                 conversations = to_classify
 
-            if not conversations:
-                logger.info("No conversations need reclassification after dedup")
-                stats = ScanStats(
-                    total=0,
-                    by_priority=PriorityStats(),
-                    by_status={},
-                )
-                return ScanResult(
-                    sources=["telegram"],
-                    dialogs_listed=total_dialogs,
-                    dialogs_filtered=filtered_count,
-                    dialogs_classified=0,
-                    items=[],
-                    stats=stats,
-                )
-
-            # 3b. Fetch calendar events (if enabled)
+            # 3b. Fetch calendar events (if enabled) -- before dedup early-return
+            # so calendar cards are always created
             calendar_events: list[CalendarEvent] = []
+            calendar_items: list[TriageItem] = []
             if self._config.calendar.enabled:
                 try:
                     calendar_events = await fetch_calendar_events(
@@ -122,6 +108,8 @@ class Scanner:
                         days_ahead=self._config.calendar.days_ahead,
                     )
                     self._classifier.calendar_context = format_events_for_classifier(calendar_events)
+                    calendar_items = events_to_triage_items(calendar_events)
+                    logger.info("Calendar: %d events -> %d triage items", len(calendar_events), len(calendar_items))
 
                     if calendar_events and conversations:
                         all_chat_names = [c.dialog.name for c in conversations]
@@ -131,6 +119,37 @@ class Scanner:
                 except Exception:
                     logger.exception("Failed to fetch calendar events (continuing without)")
 
+            if not conversations:
+                logger.info("No conversations need reclassification after dedup")
+                # Still include calendar items even when no Telegram chats need reclassifying
+                sources = ["telegram"]
+                if calendar_items:
+                    sources.append("calendar")
+                all_items = calendar_items
+                stats = self._compute_stats(all_items)
+                result = ScanResult(
+                    sources=sources,
+                    dialogs_listed=total_dialogs,
+                    dialogs_filtered=filtered_count,
+                    dialogs_classified=0,
+                    items=all_items,
+                    stats=stats,
+                )
+
+                # Output JSON
+                output_path = Path(self._config.output.json_file)
+                output_path.write_text(result.model_dump_json(indent=2))
+                logger.info("Results written to %s", output_path)
+
+                # Push to database (calendar items only)
+                if self._config.output.database_url and all_items:
+                    try:
+                        await push_to_database(self._config.output.database_url, result)
+                    except Exception:
+                        logger.exception("Failed to push to database")
+
+                return result
+
             # 4. Get display name for classification
             my_name = self._reader.me_name
 
@@ -138,7 +157,8 @@ class Scanner:
             items = await self._classifier.classify_all(conversations, my_name)
             logger.info("Classified %d items", len(items))
 
-            # 6. Sort by priority
+            # 6. Add calendar items + sort by priority
+            items.extend(calendar_items)
             priority_order = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
             items.sort(key=lambda i: priority_order.get(i.priority, 99))
 

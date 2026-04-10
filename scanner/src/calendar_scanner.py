@@ -74,6 +74,67 @@ def find_related_chat_names(
     return related
 
 
+def events_to_triage_items(events: list[CalendarEvent]) -> list:
+    """Convert calendar events into TriageItem-compatible dicts for the dashboard."""
+    from src.models import TriageItem
+
+    now = datetime.now(timezone.utc)
+    items = []
+    seen_summaries: set[str] = set()
+
+    for event in events:
+        # Skip duplicates (same event appearing twice)
+        if event.summary in seen_summaries:
+            continue
+        seen_summaries.add(event.summary)
+
+        days = event.days_until(now)
+
+        # Priority based on how soon the event is
+        if days == 0:
+            priority = "P0"
+        elif days <= 2:
+            priority = "P1"
+        elif days <= 5:
+            priority = "P2"
+        else:
+            priority = "P3"
+
+        tags = ["calendar"]
+        if days == 0:
+            tags.append("today")
+        elif days == 1:
+            tags.append("tomorrow")
+
+        day_str = event.start.strftime("%b %d")
+        time_str = event.start.strftime("%H:%M UTC")
+        when = "today" if days == 0 else "tomorrow" if days == 1 else f"in {days} days"
+
+        attendees_str = ""
+        if event.attendees:
+            attendees_str = f" with {', '.join(a.split('@')[0] for a in event.attendees[:3])}"
+
+        items.append(TriageItem(
+            source="calendar",
+            chat_name=event.summary,
+            chat_type="group",
+            waiting_person=None,
+            preview=f"{day_str} at {time_str} ({when}){attendees_str}",
+            context_summary=event.description[:200] if event.description else f"Upcoming event {when}",
+            draft_reply=None,
+            priority=priority,
+            status="NEW",
+            tags=tags,
+            last_message_at=event.start,
+            waiting_since=None,
+            waiting_days=None,
+            chat_id=None,
+            message_id=None,
+        ))
+
+    return items
+
+
 def _get_credentials(credentials_path: Path, token_path: Path) -> Credentials | None:
     creds = None
     if token_path.exists():
