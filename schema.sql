@@ -36,3 +36,16 @@ CREATE TABLE triage_items (
 CREATE INDEX idx_triage_scan ON triage_items(scan_id);
 CREATE INDEX idx_triage_priority ON triage_items(priority);
 CREATE INDEX idx_triage_user_status ON triage_items(user_status);
+
+CREATE TABLE pending_replies (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  triage_item_id  UUID NOT NULL REFERENCES triage_items(id),
+  chat_id         BIGINT NOT NULL,
+  message_text    TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'pending',
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  sent_at         TIMESTAMPTZ,
+  error           TEXT
+);
+
+CREATE INDEX idx_pending_replies_status ON pending_replies(status);
