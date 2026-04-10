@@ -12,6 +12,7 @@ Personal priority tracker that scans your Telegram conversations, classifies the
 Scanner (Python, runs locally on cron every 8h)
   Telethon MTProto -> List dialogs -> Filter -> Dedup -> Deep read
   -> Claude API classification -> Push to Postgres
+  -> Google Calendar -> Standalone event cards (P0-P3 by proximity)
   -> Telegram digest via bot
 
 Dashboard (Next.js, deployed on Vercel)
@@ -301,6 +302,8 @@ catchup-dashboard/
   -> Take top 50 most recently active
   -> Dedup: skip unchanged chats from previous scan
   -> ~5-15 chats actually classified per run
+  + Google Calendar: 7-day lookahead -> standalone event cards
+    (P0=today, P1=2d, P2=3-5d, P3=6d+)
 ```
 
 ### Key design decisions
@@ -315,6 +318,7 @@ catchup-dashboard/
 - **Queue-based replies:** Dashboard queues replies in Postgres; a sender script (2-min cron) sends them via Telethon as your user account. Row locking prevents duplicate sends.
 - **Team-aware classification:** Knows your boss (Matthew Graham) and lead dev (efecarranza). If they already responded, priority is lowered automatically.
 - **@mention boosting:** Messages that @mention you or address you by name are boosted to P0/P1.
+- **Calendar cards:** Google Calendar events appear as standalone triage items with auto-priority based on proximity (today=P0, tomorrow=P1, etc.). They also inject context into the classifier so related Telegram chats get boosted.
 
 ## Roadmap
 
@@ -328,7 +332,7 @@ catchup-dashboard/
 - [x] Reply from dashboard (edit AI drafts + send via Telegram)
 - [x] Team-aware classification (boss + lead dev responses)
 - [x] @mention detection and priority boosting
-- [x] Google Calendar integration (upcoming events boost related chat priority)
+- [x] Google Calendar integration (standalone event cards + boosts related chat priority)
 - [ ] Notion source (mentions/tags where your team needs input)
 - [ ] GitHub source (issues/PRs assigned or requesting review)
 - [ ] Slack source
