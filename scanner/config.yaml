@@ -1,0 +1,26 @@
+# config.yaml
+scan:
+  window_days: 7
+  messages_per_chat: 20
+  batch_size: 5
+
+telegram:
+  session_name: akgemilio
+  blacklist:
+    - "Monitoring Alerts"
+    - "DeFi News Channel"
+  bot_whitelist: []
+
+classification:
+  model: claude-sonnet-4-20250514
+  max_tokens: 4096
+  rate_limit_rpm: 30
+  user_context: |
+    I work at TokenLogic (Aave treasury/service provider).
+    Building Logic Protocol (cross-chain yield product).
+    Key collaborators: StraitsX, Mantle, Aave governance participants.
+    I manage incentive programs, vault development, and governance proposals.
+
+output:
+  telegram_digest: true
+  json_file: scan_results.json
