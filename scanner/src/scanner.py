@@ -148,9 +148,25 @@ class Scanner:
             # 10. Send Telegram digest
             if self._config.output.telegram_digest:
                 text = format_digest(result, self._config.output.dashboard_url)
-                chat_id = self._config.output.digest_chat_id or "me"
-                await self._reader.send_message(chat_id, text)
-                logger.info("Digest sent to chat %s", chat_id)
+                bot_token = self._config.output.digest_bot_token
+                chat_id = self._config.output.digest_chat_id
+
+                if bot_token and chat_id:
+                    # Send as the bot via Bot API
+                    import httpx
+                    async with httpx.AsyncClient() as http:
+                        resp = await http.post(
+                            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                            json={"chat_id": chat_id, "text": text},
+                        )
+                        if resp.is_success:
+                            logger.info("Digest sent via bot to chat %s", chat_id)
+                        else:
+                            logger.error("Bot API error: %s", resp.text)
+                else:
+                    # Fallback: send as user to Saved Messages
+                    await self._reader.send_message(chat_id or "me", text)
+                    logger.info("Digest sent to chat %s", chat_id or "me")
 
             return result
 

@@ -40,6 +40,7 @@ class OutputConfig(BaseModel):
     database_url: str | None = None
     dashboard_url: str | None = None
     digest_chat_id: int | None = None
+    digest_bot_token: str | None = None  # Bot API token for sending digest AS the bot
 
 
 class ScannerConfig(BaseModel):
