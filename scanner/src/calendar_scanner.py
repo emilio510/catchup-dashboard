@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import logging
-import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -52,7 +53,13 @@ def find_related_chat_names(
     events: list[CalendarEvent], chat_names: list[str]
 ) -> list[str]:
     keywords: set[str] = set()
-    skip_words = {"call", "meeting", "sync", "review", "weekly", "daily", "the", "and", "with", "for", "prep", "new"}
+    skip_words = {
+        "call", "meeting", "sync", "review", "weekly", "daily",
+        "the", "and", "with", "for", "prep", "new",
+        "aave", "token", "logic", "tokenlogic", "defi", "dao",
+        "protocol", "standup", "service", "planning", "demo",
+        "day", "catchup", "projects",
+    }
     for event in events:
         for word in event.summary.split():
             cleaned = word.strip("()[],-:").lower()
@@ -62,12 +69,12 @@ def find_related_chat_names(
     related = []
     for name in chat_names:
         name_lower = name.lower()
-        if any(kw in name_lower for kw in keywords):
+        if any(re.search(rf'\b{re.escape(kw)}\b', name_lower) for kw in keywords):
             related.append(name)
     return related
 
 
-def _get_credentials(credentials_path: Path, token_path: Path) -> Credentials:
+def _get_credentials(credentials_path: Path, token_path: Path) -> Credentials | None:
     creds = None
     if token_path.exists():
         creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
@@ -77,10 +84,12 @@ def _get_credentials(credentials_path: Path, token_path: Path) -> Credentials:
             creds.refresh(Request())
         else:
             if not credentials_path.exists():
-                raise FileNotFoundError(
-                    f"Google credentials not found at {credentials_path}. "
-                    "Download from Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client IDs"
+                logger.warning(
+                    "Google credentials not found at %s. Calendar integration disabled. "
+                    "See README for setup instructions.",
+                    credentials_path,
                 )
+                return None
             flow = InstalledAppFlow.from_client_secrets_file(str(credentials_path), SCOPES)
             creds = flow.run_local_server(port=0)
 
@@ -89,12 +98,15 @@ def _get_credentials(credentials_path: Path, token_path: Path) -> Credentials:
     return creds
 
 
-async def fetch_calendar_events(
+def _fetch_calendar_events_sync(
     credentials_path: Path,
     token_path: Path,
-    days_ahead: int = 7,
+    days_ahead: int,
 ) -> list[CalendarEvent]:
     creds = _get_credentials(credentials_path, token_path)
+    if creds is None:
+        return []
+
     service = build("calendar", "v3", credentials=creds)
 
     now = datetime.now(timezone.utc)
@@ -126,8 +138,18 @@ async def fetch_calendar_events(
             continue
 
         try:
-            start = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
-            end = datetime.fromisoformat(end_str.replace("Z", "+00:00")) if end_str else start + timedelta(hours=1)
+            if "T" not in start_str:
+                start = datetime.fromisoformat(start_str).replace(tzinfo=timezone.utc)
+            else:
+                start = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+
+            if end_str:
+                if "T" not in end_str:
+                    end = datetime.fromisoformat(end_str).replace(tzinfo=timezone.utc)
+                else:
+                    end = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
+            else:
+                end = start + timedelta(hours=1)
         except (ValueError, TypeError):
             continue
 
@@ -150,3 +172,14 @@ async def fetch_calendar_events(
 
     logger.info("Fetched %d calendar events for next %d days", len(events), days_ahead)
     return events
+
+
+async def fetch_calendar_events(
+    credentials_path: Path,
+    token_path: Path,
+    days_ahead: int = 7,
+) -> list[CalendarEvent]:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        None, _fetch_calendar_events_sync, credentials_path, token_path, days_ahead
+    )

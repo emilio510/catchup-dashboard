@@ -28,3 +28,5 @@ scanner/cron/*.log
 # Google Calendar OAuth credentials
 scanner/token.json
 scanner/credentials.json
+token.json
+credentials.json
