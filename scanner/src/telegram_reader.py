@@ -83,6 +83,10 @@ class TelegramReader:
         assert self._client is not None
         await self._client.send_message("me", text)
 
+    async def send_message(self, chat_id: int | str, text: str) -> None:
+        assert self._client is not None
+        await self._client.send_message(chat_id, text)
+
     async def disconnect(self) -> None:
         if self._client:
             await self._client.disconnect()

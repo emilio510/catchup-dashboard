@@ -103,8 +103,10 @@ class Scanner:
 
             # 9. Send Telegram digest
             if self._config.output.telegram_digest:
-                text = format_digest(result)
-                await self._reader.send_to_saved_messages(text)
+                text = format_digest(result, self._config.output.dashboard_url)
+                chat_id = self._config.output.digest_chat_id or "me"
+                await self._reader.send_message(chat_id, text)
+                logger.info("Digest sent to chat %s", chat_id)
 
             return result
 

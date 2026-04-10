@@ -38,6 +38,8 @@ class OutputConfig(BaseModel):
     telegram_digest: bool = True
     json_file: str = "scan_results.json"
     database_url: str | None = None
+    dashboard_url: str | None = None
+    digest_chat_id: int | None = None
 
 
 class ScannerConfig(BaseModel):

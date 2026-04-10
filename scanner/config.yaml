@@ -71,3 +71,5 @@ output:
   telegram_digest: true
   json_file: scan_results.json
   # database_url: set via DATABASE_URL env var
+  dashboard_url: https://catchup-dashboard-akgemilio.vercel.app
+  # digest_chat_id: 123456789  # Set to your bot chat ID
