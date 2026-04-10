@@ -48,6 +48,8 @@ export async function getTriageItems(scanId: string, filters?: {
   const sql = getDb();
   const userStatus = filters?.userStatus ?? "open";
 
+  const escapedSearch = (filters?.search ?? "").replace(/[%_\\]/g, "\\$&");
+
   const rows = await sql`
     SELECT *
     FROM triage_items
@@ -57,9 +59,9 @@ export async function getTriageItems(scanId: string, filters?: {
       AND (${filters?.chatType ?? ""} = '' OR chat_type = ${filters?.chatType ?? ""})
       AND (
         ${filters?.search ?? ""} = ''
-        OR chat_name ILIKE ${"%" + (filters?.search ?? "") + "%"}
-        OR waiting_person ILIKE ${"%" + (filters?.search ?? "") + "%"}
-        OR preview ILIKE ${"%" + (filters?.search ?? "") + "%"}
+        OR chat_name ILIKE ${"%" + escapedSearch + "%"}
+        OR waiting_person ILIKE ${"%" + escapedSearch + "%"}
+        OR preview ILIKE ${"%" + escapedSearch + "%"}
       )
     ORDER BY
       CASE priority

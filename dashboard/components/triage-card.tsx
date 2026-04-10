@@ -24,6 +24,9 @@ export function TriageCard({ item }: TriageCardProps) {
             {item.waiting_person}{waitText ? ` -- ${waitText}` : ""}
           </div>
         )}
+        {item.preview && (
+          <p className="text-[#8b949e] mb-2 line-clamp-2">{item.preview}</p>
+        )}
         <div className="flex gap-1 flex-wrap">
           <span className={`px-1.5 py-0.5 rounded text-[10px] border ${sourceConfig.bgColor}`}>
             {sourceConfig.label}

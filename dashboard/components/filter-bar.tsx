@@ -33,6 +33,8 @@ function FilterBarInner({ currentStatus, currentSource, currentChatType, current
     router.push(`?${params.toString()}`);
   }, [router, searchParams]);
 
+  const handleSearch = useCallback((v: string) => setFilter("search", v || undefined), [setFilter]);
+
   const statusFilters = [
     { value: "open", label: "To respond" },
     { value: "done", label: "Done" },
@@ -66,7 +68,7 @@ function FilterBarInner({ currentStatus, currentSource, currentChatType, current
         <FilterChip key={f.label} label={f.label} active={currentChatType === f.value} onClick={() => setFilter("chatType", f.value)} />
       ))}
       <div className="w-px h-5 bg-[#30363d] mx-1" />
-      <SearchInput currentSearch={currentSearch} onSearch={(v) => setFilter("search", v || undefined)} />
+      <SearchInput currentSearch={currentSearch} onSearch={handleSearch} />
     </div>
   );
 }

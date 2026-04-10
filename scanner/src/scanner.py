@@ -96,7 +96,10 @@ class Scanner:
 
             # 8. Push to database
             if self._config.output.database_url:
-                await push_to_database(self._config.output.database_url, result)
+                try:
+                    await push_to_database(self._config.output.database_url, result)
+                except Exception:
+                    logger.exception("Failed to push to database (scan results still saved to JSON)")
 
             # 9. Send Telegram digest
             if self._config.output.telegram_digest:
