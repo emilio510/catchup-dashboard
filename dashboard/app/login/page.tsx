@@ -1,23 +1,37 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { loginAction } from "./action";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [state, formAction, isPending] = useActionState(
-    async (_prev: { error?: string; success?: boolean }, formData: FormData) => {
-      return await loginAction(formData);
-    },
-    {}
-  );
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
 
-  useEffect(() => {
-    if (state.success) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPending(true);
+    setError("");
+
+    const formData = new FormData(e.currentTarget);
+    const password = formData.get("password") as string;
+
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
       router.push("/");
+      router.refresh();
+    } else {
+      setError(data.error || "Wrong password");
+      setPending(false);
     }
-  }, [state.success, router]);
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#0d1117]">
@@ -25,7 +39,7 @@ export default function LoginPage() {
         <h1 className="text-lg font-bold text-[#e6edf3] mb-6 text-center">
           Catch-up Dashboard
         </h1>
-        <form action={formAction}>
+        <form onSubmit={handleSubmit}>
           <input
             type="password"
             name="password"
@@ -35,13 +49,13 @@ export default function LoginPage() {
           />
           <button
             type="submit"
-            disabled={isPending}
+            disabled={pending}
             className="w-full bg-[#238636] hover:bg-[#2ea043] text-white text-sm font-medium py-2 rounded disabled:opacity-50"
           >
-            {isPending ? "..." : "Sign in"}
+            {pending ? "..." : "Sign in"}
           </button>
-          {state.error && (
-            <p className="text-[#f85149] text-xs mt-3 text-center">{state.error}</p>
+          {error && (
+            <p className="text-[#f85149] text-xs mt-3 text-center">{error}</p>
           )}
         </form>
       </div>
