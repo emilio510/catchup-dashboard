@@ -64,6 +64,54 @@ def build_item_insert(item: TriageItem, scan_id: str) -> tuple[str, list]:
     return query, params
 
 
+def should_reclassify(
+    last_message_at: datetime | None,
+    previous_scan_at: datetime | None,
+    previous_user_status: str | None,
+) -> bool:
+    if previous_scan_at is None:
+        return True
+    if last_message_at is None:
+        return False
+    if previous_user_status == "done":
+        return last_message_at > previous_scan_at
+    return last_message_at > previous_scan_at
+
+
+def build_update_scanned_at(item_id: str, new_scan_id: str) -> tuple[str, list]:
+    query = """
+        UPDATE triage_items
+        SET scan_id = $1::uuid, scanned_at = now()
+        WHERE id = $2::uuid
+    """
+    return query, [new_scan_id, item_id]
+
+
+async def get_previous_items(database_url: str, chat_ids: list[int]) -> dict[int, dict]:
+    if not chat_ids:
+        return {}
+    conn = await asyncpg.connect(database_url)
+    try:
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (chat_id)
+                id, chat_id, scanned_at, user_status, last_message_at
+            FROM triage_items
+            WHERE chat_id = ANY($1)
+            ORDER BY chat_id, scanned_at DESC
+        """, chat_ids)
+        return {
+            row["chat_id"]: {
+                "id": str(row["id"]),
+                "scanned_at": row["scanned_at"],
+                "user_status": row["user_status"],
+                "last_message_at": row["last_message_at"],
+            }
+            for row in rows
+        }
+    finally:
+        await conn.close()
+
+
 async def push_to_database(database_url: str, result: ScanResult) -> str:
     conn = await asyncpg.connect(database_url)
     try:
