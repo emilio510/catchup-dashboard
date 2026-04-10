@@ -26,7 +26,7 @@ class TriageItem(BaseModel):
     tags: list[str] = Field(default_factory=list)
     last_message_at: datetime | None = None
     waiting_since: datetime | None = None
-    waiting_days: int | None = None
+    waiting_days: float | None = None
     chat_id: int | None = None
     message_id: int | None = None
 

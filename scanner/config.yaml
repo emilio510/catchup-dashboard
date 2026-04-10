@@ -3,12 +3,58 @@ scan:
   window_days: 7
   messages_per_chat: 20
   batch_size: 5
+  max_dialogs: 50
 
 telegram:
   session_name: akgemilio
   blacklist:
+    # Automated/monitoring bots
+    - "Hypernative Alerts"
+    - "TokenLogic & HypernativeBOT"
+    - "Kelp Fluid Position Monitroing"
+    - "Sky PSM monitoring"
     - "Monitoring Alerts"
+    - "Hypernative Sprint"
+    # Public communities (noise)
+    - "DeFi Francophone 🇫🇷"
+    - "LobsterDAO 🦞"
+    - "Club Gearbox DAO"
+    - "Tokenised RWA - General Discussion"
+    - "ACI Support"
+    - "Exploring Sonic DeFi Spaces"
+    # Archive/dead/test
+    - "[Archive] Ethena <> Aave"
+    - "Entropy <> Renzo (delete)"
+    - "TEST - Arbitrum Foundation"
     - "DeFi News Channel"
+    # Event/travel chats
+    - "ETHcc 2026 Team Chat"
+    - "ETHcc Cannes Group Chat"
+    - "Cannes 2026"
+    - "GA ETHCC"
+    - "BKK novembre"
+    - "GA in BKK"
+    - "Seoul"
+    - "Token2049"
+    - "Stellar <> Defi Day ETHcc"
+    # Marketing-only groups
+    - "AAVE <> Bitget Wallet (Marketing)"
+    - "AAVE <> Bitget Wallet Marketing"
+    - "Origami <> Aave Marketing"
+    - "Maple <> Aave (Marketing)"
+    - "Aave <> Celo - Marketing"
+    - "Aave <> Celo - marketing"
+    - "Marketing - Metamask <> Aave"
+    - "Marketing - Aave 🤝 Balancer"
+    - "Media - OKX <> Aave"
+    - "Aave Marketing <> GRVT"
+    # Internal design/social (low urgency)
+    - "TokenLogic Graphic Design"
+    - "TokenLogic Social Media"
+    - "TokenLogic Website"
+    - "Brand Discussion"
+    # Misc no-action
+    - "0xAI Terminal"
   bot_whitelist: []
 
 classification:
