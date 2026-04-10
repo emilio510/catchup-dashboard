@@ -96,7 +96,7 @@ output:
   # digest_bot_token: set via DIGEST_BOT_TOKEN env var
 
 calendar:
-  enabled: false  # Set to true after OAuth setup
+  enabled: true
   credentials_path: credentials.json
   token_path: token.json
   days_ahead: 7
