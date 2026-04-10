@@ -34,7 +34,7 @@ export function TriageCard({ item }: TriageCardProps) {
           {item.chat_type === "dm" && (
             <span className="px-1.5 py-0.5 rounded text-[10px] border border-[#30363d] bg-[#30363d]/50">DM</span>
           )}
-          {item.tags.slice(0, 2).map((tag) => (
+          {(item.tags ?? []).slice(0, 2).map((tag) => (
             <span key={tag} className="px-1.5 py-0.5 rounded text-[10px] border border-[#30363d] text-[#8b949e]">{tag}</span>
           ))}
           {waitText && (

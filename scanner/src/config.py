@@ -68,6 +68,9 @@ class ScannerConfig(BaseModel):
         db_url = os.environ.get("DATABASE_URL", "")
         if db_url:
             output_data["database_url"] = db_url
+        bot_token = os.environ.get("DIGEST_BOT_TOKEN", "")
+        if bot_token:
+            output_data["digest_bot_token"] = bot_token
         data["output"] = output_data
 
         config = cls(**data)

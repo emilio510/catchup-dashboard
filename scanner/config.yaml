@@ -73,4 +73,4 @@ output:
   # database_url: set via DATABASE_URL env var
   dashboard_url: https://catchup-dashboard-akgemilio.vercel.app
   digest_chat_id: 1744950707  # Your Telegram user ID (bot sends TO you)
-  digest_bot_token: "***REMOVED***"  # @akgbaambot
+  # digest_bot_token: set via DIGEST_BOT_TOKEN env var

@@ -140,6 +140,7 @@ class Classifier:
             self._config.classification.user_context,
         )
 
+        response = None
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -157,17 +158,20 @@ class Classifier:
                 wait = 2 ** (attempt + 1)
                 logger.warning("API error (attempt %d/%d), retrying in %ds: %s", attempt + 1, max_retries, wait, exc)
                 await asyncio.sleep(wait)
+            except Exception as exc:
+                logger.error("Unexpected API error: %s", exc)
+                return []
 
-        if not response.content or response.content[0].type != "text":
-            logger.error("Unexpected response: stop_reason=%s", response.stop_reason)
+        if response is None or not response.content or response.content[0].type != "text":
+            logger.error("Unexpected response: stop_reason=%s", getattr(response, 'stop_reason', 'none'))
             return []
 
         response_text = response.content[0].text
 
+        # Parse JSON, handling markdown code blocks
         try:
             data = json.loads(response_text)
         except json.JSONDecodeError:
-            # Claude sometimes wraps JSON in markdown code blocks
             match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", response_text, re.DOTALL)
             if match:
                 try:
@@ -189,20 +193,42 @@ class Classifier:
 
         items: list[TriageItem] = []
         for entry in data:
-            chat_name = entry.get("chat_name", "")
-            conv = conv_by_name.get(chat_name)
-            chat_id = conv.dialog.chat_id if conv else 0
-            chat_type = conv.chat_type if conv else "dm"
-            last_msg_id = conv.messages[-1].message_id if conv and conv.messages else 0
+            try:
+                chat_name = entry.get("chat_name", "")
+                conv = conv_by_name.get(chat_name)
+                chat_id = conv.dialog.chat_id if conv else 0
+                chat_type = conv.chat_type if conv else "dm"
+                last_msg_id = conv.messages[-1].message_id if conv and conv.messages else 0
 
-            parsed = parse_classification_response(
-                json.dumps([entry]),
-                source="telegram",
-                chat_type=chat_type,
-                chat_id=chat_id,
-                last_message_id=last_msg_id,
-            )
-            items.extend(parsed)
+                waiting_since = None
+                if entry.get("waiting_since"):
+                    try:
+                        waiting_since = datetime.fromisoformat(
+                            entry["waiting_since"].replace("Z", "+00:00")
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
+                item = TriageItem(
+                    source="telegram",
+                    chat_name=entry.get("chat_name", "Unknown"),
+                    chat_type=chat_type,
+                    waiting_person=entry.get("waiting_person"),
+                    preview=entry.get("preview", ""),
+                    context_summary=entry.get("context_summary"),
+                    draft_reply=entry.get("draft_reply"),
+                    priority=entry.get("priority", "P2"),
+                    status=entry.get("status", "READ_NO_REPLY"),
+                    tags=entry.get("tags", []),
+                    last_message_at=datetime.now(timezone.utc),
+                    waiting_since=waiting_since,
+                    waiting_days=entry.get("waiting_days"),
+                    chat_id=chat_id,
+                    message_id=last_msg_id,
+                )
+                items.append(item)
+            except Exception:
+                logger.exception("Failed to parse classification entry: %s", entry)
 
         return items
 

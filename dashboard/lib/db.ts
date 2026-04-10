@@ -54,8 +54,11 @@ export async function getTriageItems(filters?: {
   // This works across scans -- dedup may skip re-classifying unchanged chats
   // but their items from previous scans are still valid and shown here
   const rows = await sql`
-    SELECT DISTINCT ON (chat_id) *
-    FROM triage_items
+    SELECT * FROM (
+      SELECT DISTINCT ON (chat_id) *
+      FROM triage_items
+      ORDER BY chat_id, scanned_at DESC
+    ) latest
     WHERE user_status = ${userStatus}
       AND (${filters?.source ?? ""} = '' OR source = ${filters?.source ?? ""})
       AND (${filters?.chatType ?? ""} = '' OR chat_type = ${filters?.chatType ?? ""})
@@ -65,7 +68,6 @@ export async function getTriageItems(filters?: {
         OR waiting_person ILIKE ${"%" + escapedSearch + "%"}
         OR preview ILIKE ${"%" + escapedSearch + "%"}
       )
-    ORDER BY chat_id, scanned_at DESC
   `;
 
   // Sort by priority then waiting_days (DISTINCT ON requires ORDER BY chat_id first)
