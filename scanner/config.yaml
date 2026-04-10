@@ -55,6 +55,9 @@ telegram:
     - "Brand Discussion"
     # Misc no-action
     - "0xAI Terminal"
+    - "Aave <> Chainlink - SVR recapture tracker"
+    - "searcher.dev"
+    - "Lido V3 :: stVaults"
   bot_whitelist: []
 
 classification:
