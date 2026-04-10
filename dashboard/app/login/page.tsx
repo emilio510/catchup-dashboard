@@ -1,15 +1,23 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { loginAction } from "./action";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(
-    async (_prev: { error?: string }, formData: FormData) => {
+    async (_prev: { error?: string; success?: boolean }, formData: FormData) => {
       return await loginAction(formData);
     },
     {}
   );
+
+  useEffect(() => {
+    if (state.success) {
+      router.push("/");
+    }
+  }, [state.success, router]);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#0d1117]">

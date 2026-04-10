@@ -1,9 +1,8 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
-export async function loginAction(formData: FormData): Promise<{ error?: string }> {
+export async function loginAction(formData: FormData): Promise<{ error?: string; success?: boolean }> {
   const password = formData.get("password") as string;
   const expected = process.env.DASHBOARD_PASSWORD;
 
@@ -24,5 +23,5 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
     path: "/",
   });
 
-  redirect("/");
+  return { success: true };
 }
