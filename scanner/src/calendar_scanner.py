@@ -80,13 +80,14 @@ def events_to_triage_items(events: list[CalendarEvent]) -> list:
 
     now = datetime.now(timezone.utc)
     items = []
-    seen_summaries: set[str] = set()
+    seen_keys: set[tuple[str, str]] = set()
 
     for event in events:
-        # Skip duplicates (same event appearing twice)
-        if event.summary in seen_summaries:
+        # Skip duplicates (same event appearing twice on the same day)
+        event_key = (event.summary, event.start.strftime("%Y-%m-%d"))
+        if event_key in seen_keys:
             continue
-        seen_summaries.add(event.summary)
+        seen_keys.add(event_key)
 
         days = event.days_until(now)
 

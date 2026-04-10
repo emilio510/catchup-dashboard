@@ -7,7 +7,7 @@ from pathlib import Path
 from src.calendar_scanner import CalendarEvent, events_to_triage_items, fetch_calendar_events, find_related_chat_names, format_events_for_classifier
 from src.classifier import Classifier
 from src.config import ScannerConfig
-from src.database import push_to_database
+from src.database import delete_calendar_items, push_to_database
 from src.digest import format_digest
 from src.models import PriorityStats, ScanResult, ScanStats, TriageItem
 from src.telegram_reader import TelegramReader
@@ -143,6 +143,11 @@ class Scanner:
 
                 # Push to database (calendar items only)
                 if self._config.output.database_url and all_items:
+                    if calendar_items:
+                        try:
+                            await delete_calendar_items(self._config.output.database_url)
+                        except Exception:
+                            logger.exception("Failed to delete old calendar items")
                     try:
                         await push_to_database(self._config.output.database_url, result)
                     except Exception:
@@ -183,6 +188,11 @@ class Scanner:
 
             # 9. Push to database
             if self._config.output.database_url:
+                if calendar_items:
+                    try:
+                        await delete_calendar_items(self._config.output.database_url)
+                    except Exception:
+                        logger.exception("Failed to delete old calendar items")
                 try:
                     await push_to_database(self._config.output.database_url, result)
                 except Exception:

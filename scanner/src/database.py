@@ -112,6 +112,20 @@ async def get_previous_items(database_url: str, chat_ids: list[int]) -> dict[int
         await conn.close()
 
 
+async def delete_calendar_items(database_url: str) -> int:
+    conn = await asyncpg.connect(database_url)
+    try:
+        result = await conn.execute(
+            "DELETE FROM triage_items WHERE source = 'calendar'"
+        )
+        count = int(result.split()[-1])
+        if count:
+            logger.info("Deleted %d old calendar items", count)
+        return count
+    finally:
+        await conn.close()
+
+
 async def push_to_database(database_url: str, result: ScanResult) -> str:
     conn = await asyncpg.connect(database_url)
     try:
