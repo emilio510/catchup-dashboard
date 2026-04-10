@@ -53,6 +53,7 @@ When in doubt, the classifier always chooses the higher priority.
 - An Anthropic API key ([console.anthropic.com](https://console.anthropic.com))
 - A Neon Postgres database ([neon.tech](https://neon.tech))
 - A Vercel account for deployment ([vercel.com](https://vercel.com))
+- (Optional) Google Cloud project with Calendar API enabled ([console.cloud.google.com](https://console.cloud.google.com))
 
 ### 1. Clone and install
 
@@ -190,6 +191,31 @@ crontab -e
 # Add: 0 */8 * * * cd /path/to/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml
 ```
 
+### 9. (Optional) Connect Google Calendar
+
+Google Calendar events boost priority of related Telegram chats and give the classifier meeting prep context.
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a project and enable **Google Calendar API**
+3. Go to APIs & Services > Credentials > Create **OAuth 2.0 Client ID** (Desktop App)
+4. Download the JSON and save as `scanner/credentials.json`
+5. Run the auth flow (opens browser):
+```bash
+cd scanner && .venv/bin/python3 -c "
+from src.calendar_scanner import _get_credentials
+from pathlib import Path
+_get_credentials(Path('credentials.json'), Path('token.json'))
+print('Auth successful!')
+"
+```
+6. Enable in `scanner/config.yaml`:
+```yaml
+calendar:
+  enabled: true
+```
+
+The scanner will now fetch your next 7 days of events and use them to boost related chat priority.
+
 ## Usage
 
 ### Daily workflow
@@ -238,6 +264,7 @@ catchup-dashboard/
       cli.py              # CLI entry point
       scanner.py          # Orchestrator (read -> dedup -> classify -> push -> digest)
       sender.py           # Reply sender (polls pending_replies, sends via Telethon)
+      calendar_scanner.py # Google Calendar: fetch events, find related chats
       telegram_reader.py  # Telethon: list dialogs, filter, deep read
       classifier.py       # Claude API batch classification
       database.py         # Postgres push + dedup queries (asyncpg)
@@ -301,9 +328,9 @@ catchup-dashboard/
 - [x] Reply from dashboard (edit AI drafts + send via Telegram)
 - [x] Team-aware classification (boss + lead dev responses)
 - [x] @mention detection and priority boosting
+- [x] Google Calendar integration (upcoming events boost related chat priority)
 - [ ] Notion source (mentions/tags where your team needs input)
 - [ ] GitHub source (issues/PRs assigned or requesting review)
-- [ ] Google Calendar (deadlines that boost priority of related chats)
 - [ ] Slack source
 - [ ] Discord source
 
