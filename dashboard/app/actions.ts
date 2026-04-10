@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateItemStatus, queueReply } from "@/lib/db";
+import { updateItemStatus, queueReplyAndMarkDone } from "@/lib/db";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -29,12 +29,11 @@ export async function reopenItem(itemId: string): Promise<void> {
   revalidatePath("/");
 }
 
-export async function sendReply(itemId: string, chatId: number, messageText: string): Promise<void> {
+export async function sendReply(itemId: string, messageText: string): Promise<void> {
   validateItemId(itemId);
   if (!messageText.trim()) {
     throw new Error("Message cannot be empty");
   }
-  await queueReply(itemId, chatId, messageText);
-  await updateItemStatus(itemId, "done");
+  await queueReplyAndMarkDone(itemId, messageText);
   revalidatePath("/");
 }

@@ -29,7 +29,7 @@ export function CardDetail({ item }: CardDetailProps) {
     if (!replyText.trim() || !item.chat_id) return;
     setPendingAction("send");
     startTransition(async () => {
-      await sendReply(item.id, item.chat_id!, replyText);
+      await sendReply(item.id, replyText);
       setSent(true);
       router.refresh();
       setPendingAction(null);

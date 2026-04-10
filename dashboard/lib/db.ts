@@ -94,14 +94,28 @@ export async function updateItemStatus(
   `;
 }
 
-export async function queueReply(
+export async function queueReplyAndMarkDone(
   triageItemId: string,
-  chatId: number,
   messageText: string
 ): Promise<void> {
   const sql = getDb();
+  // Get the chat_id from the triage item (don't trust client)
+  const items = await sql`
+    SELECT chat_id FROM triage_items WHERE id = ${triageItemId}::uuid
+  `;
+  if (items.length === 0 || !items[0].chat_id) {
+    throw new Error("Item not found or has no chat_id");
+  }
+  const chatId = items[0].chat_id;
+
+  // Queue reply and mark done
   await sql`
     INSERT INTO pending_replies (triage_item_id, chat_id, message_text)
     VALUES (${triageItemId}::uuid, ${chatId}, ${messageText})
+  `;
+  await sql`
+    UPDATE triage_items
+    SET user_status = 'done', user_status_at = now()
+    WHERE id = ${triageItemId}::uuid
   `;
 }

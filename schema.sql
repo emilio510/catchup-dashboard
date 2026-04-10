@@ -39,13 +39,14 @@ CREATE INDEX idx_triage_user_status ON triage_items(user_status);
 
 CREATE TABLE pending_replies (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  triage_item_id  UUID NOT NULL REFERENCES triage_items(id),
+  triage_item_id  UUID NOT NULL REFERENCES triage_items(id) ON DELETE CASCADE,
   chat_id         BIGINT NOT NULL,
   message_text    TEXT NOT NULL,
   status          TEXT NOT NULL DEFAULT 'pending',
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   sent_at         TIMESTAMPTZ,
-  error           TEXT
+  error           TEXT,
+  retry_count     INT NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_pending_replies_status ON pending_replies(status);

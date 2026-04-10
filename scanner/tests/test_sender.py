@@ -5,7 +5,10 @@ def test_build_fetch_pending_query():
     query = build_fetch_pending_query()
     assert "SELECT" in query
     assert "pending_replies" in query
-    assert "status = 'pending'" in query
+    assert "'pending'" in query
+    assert "'failed'" in query
+    assert "retry_count < 3" in query
+    assert "FOR UPDATE SKIP LOCKED" in query
 
 
 def test_build_mark_sent_query():
