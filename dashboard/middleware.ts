@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const isLoginPage = request.nextUrl.pathname === "/login";
   const authCookie = request.cookies.get("catchup-auth");
 
