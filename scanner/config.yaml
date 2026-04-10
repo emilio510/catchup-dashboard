@@ -70,6 +70,14 @@ classification:
     Key collaborators: StraitsX, Mantle, Aave governance participants.
     I manage incentive programs, vault development, and governance proposals.
 
+    Team context (important for classification):
+    - Matthew Graham is my boss and co-founder of TokenLogic. If he already answered
+      in a chat, treat it as if I answered -- the ball is NOT in my court.
+    - efecarranza (Efe) is my lead developer. He handles technical questions on our
+      behalf. If he answered a technical question, I don't need to respond.
+    - When classifying, if Matthew or Efe already responded to the other party's
+      message, lower the priority or mark as MONITORING -- they covered it.
+
 output:
   telegram_digest: true
   json_file: scan_results.json
