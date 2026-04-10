@@ -78,6 +78,15 @@ classification:
     - When classifying, if Matthew or Efe already responded to the other party's
       message, lower the priority or mark as MONITORING -- they covered it.
 
+    My identity in chats:
+    - Telegram username: @AkgEmilio
+    - Display name: "AkgEmilio | TokenLogic" or "Emile"
+    - If someone @mentions me, replies to my message, or addresses me by name
+      ("Emile", "AkgEmilio", "Emilio"), that is a DIRECT ping -- boost priority.
+    - In group chats, distinguish between messages directed at me specifically vs.
+      general group discussion. A @AkgEmilio mention = P0/P1. A general group
+      question not directed at me = P2/P3.
+
 output:
   telegram_digest: true
   json_file: scan_results.json
