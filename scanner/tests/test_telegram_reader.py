@@ -67,14 +67,15 @@ def test_should_not_filter_valid_chat():
     assert should_filter_dialog(dialog, config) is False
 
 
-def test_should_filter_outside_window():
+def test_should_not_filter_old_chat_within_window():
     config = make_config()
     old_date = datetime.now(timezone.utc) - timedelta(days=10)
     dialog = DialogInfo(
         chat_id=6, name="Old Chat", is_channel=False, is_bot=False,
         last_message_sender_is_me=False, last_message_date=old_date,
     )
-    assert should_filter_dialog(dialog, config) is True
+    # Old chats should NOT be filtered -- scan window only limits deep_read depth
+    assert should_filter_dialog(dialog, config) is False
 
 
 def test_chat_message_format():

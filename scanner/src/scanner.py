@@ -6,7 +6,7 @@ from pathlib import Path
 
 from src.classifier import Classifier
 from src.config import ScannerConfig
-from src.digest import send_digest
+from src.digest import format_digest
 from src.models import PriorityStats, ScanResult, ScanStats, TriageItem
 from src.telegram_reader import TelegramReader
 
@@ -60,15 +60,14 @@ class Scanner:
                 return ScanResult(
                     sources=["telegram"],
                     dialogs_listed=total_dialogs,
-                    dialogs_filtered=len(conversations),
+                    dialogs_filtered=filtered_count,
                     dialogs_classified=0,
                     items=[],
                     stats=stats,
                 )
 
             # 3. Get display name for classification
-            me = await self._reader._client.get_me()
-            my_name = me.first_name or "Me"
+            my_name = self._reader.me_name
 
             # 4. Classify
             items = await self._classifier.classify_all(conversations, my_name)
@@ -83,7 +82,7 @@ class Scanner:
             result = ScanResult(
                 sources=["telegram"],
                 dialogs_listed=total_dialogs,
-                dialogs_filtered=len(conversations),
+                dialogs_filtered=filtered_count,
                 dialogs_classified=len(conversations),
                 items=items,
                 stats=stats,
@@ -96,7 +95,8 @@ class Scanner:
 
             # 8. Send Telegram digest
             if self._config.output.telegram_digest:
-                await send_digest(self._reader._client, result)
+                text = format_digest(result)
+                await self._reader.send_to_saved_messages(text)
 
             return result
 

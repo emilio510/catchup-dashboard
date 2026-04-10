@@ -53,10 +53,6 @@ def should_filter_dialog(dialog: DialogInfo, config: ScannerConfig) -> bool:
         return True
     if dialog.last_message_sender_is_me:
         return True
-    if dialog.last_message_date is not None:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=config.scan.window_days)
-        if dialog.last_message_date < cutoff:
-            return True
     return False
 
 
@@ -65,6 +61,11 @@ class TelegramReader:
         self._config = config
         self._client: TelegramClient | None = None
         self._me_id: int | None = None
+        self._me_name: str = "Me"
+
+    @property
+    def me_name(self) -> str:
+        return self._me_name
 
     async def connect(self) -> None:
         self._client = TelegramClient(
@@ -75,7 +76,12 @@ class TelegramReader:
         await self._client.start()
         me = await self._client.get_me()
         self._me_id = me.id
+        self._me_name = me.first_name or "Me"
         logger.info("Connected as %s (ID: %s)", me.first_name, me.id)
+
+    async def send_to_saved_messages(self, text: str) -> None:
+        assert self._client is not None
+        await self._client.send_message("me", text)
 
     async def disconnect(self) -> None:
         if self._client:

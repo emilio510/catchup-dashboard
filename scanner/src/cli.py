@@ -54,13 +54,19 @@ async def async_main() -> None:
 
     config = ScannerConfig.from_yaml(args.config)
 
-    # Apply CLI overrides
+    # Apply CLI overrides (immutable)
     if args.window_days is not None:
-        config.scan.window_days = args.window_days
+        config = config.model_copy(
+            update={"scan": config.scan.model_copy(update={"window_days": args.window_days})}
+        )
     if args.no_digest:
-        config.output.telegram_digest = False
+        config = config.model_copy(
+            update={"output": config.output.model_copy(update={"telegram_digest": False})}
+        )
     if args.output is not None:
-        config.output.json_file = str(args.output)
+        config = config.model_copy(
+            update={"output": config.output.model_copy(update={"json_file": str(args.output)})}
+        )
 
     scanner = Scanner(config)
     result = await scanner.run()

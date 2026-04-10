@@ -4,7 +4,11 @@ from pathlib import Path
 from src.config import ScannerConfig
 
 
-def test_load_config_from_yaml():
+def test_load_config_from_yaml(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_API_ID", "99999")
+    monkeypatch.setenv("TELEGRAM_API_HASH", "testhash")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+
     yaml_content = """
 scan:
   window_days: 7
@@ -74,7 +78,11 @@ output:
     assert config.classification.api_key == "sk-test"
 
 
-def test_blacklist_case_insensitive():
+def test_blacklist_case_insensitive(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_API_ID", "99999")
+    monkeypatch.setenv("TELEGRAM_API_HASH", "testhash")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+
     yaml_content = """
 scan:
   window_days: 7

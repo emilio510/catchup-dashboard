@@ -136,21 +136,44 @@ class Classifier:
             messages=[{"role": "user", "content": prompt}],
         )
 
-        response_text = response.content[0].text
-        all_items = []
+        if not response.content or response.content[0].type != "text":
+            logger.error("Unexpected response: stop_reason=%s", response.stop_reason)
+            return []
 
-        for conv in conversations:
-            last_msg_id = conv.messages[-1].message_id if conv.messages else 0
-            items = parse_classification_response(
-                response_text,
+        response_text = response.content[0].text
+
+        try:
+            data = json.loads(response_text)
+        except json.JSONDecodeError:
+            logger.error("Failed to parse classifier JSON response")
+            return []
+
+        if not isinstance(data, list):
+            data = [data]
+
+        # Build lookup from chat_name -> conversation metadata
+        conv_by_name: dict[str, ConversationData] = {}
+        for c in conversations:
+            conv_by_name[c.dialog.name] = c
+
+        items: list[TriageItem] = []
+        for entry in data:
+            chat_name = entry.get("chat_name", "")
+            conv = conv_by_name.get(chat_name)
+            chat_id = conv.dialog.chat_id if conv else 0
+            chat_type = conv.chat_type if conv else "dm"
+            last_msg_id = conv.messages[-1].message_id if conv and conv.messages else 0
+
+            parsed = parse_classification_response(
+                json.dumps([entry]),
                 source="telegram",
-                chat_type=conv.chat_type,
-                chat_id=conv.dialog.chat_id,
+                chat_type=chat_type,
+                chat_id=chat_id,
                 last_message_id=last_msg_id,
             )
-            all_items.extend(items)
+            items.extend(parsed)
 
-        return all_items
+        return items
 
     async def classify_all(
         self,

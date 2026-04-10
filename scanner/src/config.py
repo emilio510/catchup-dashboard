@@ -49,12 +49,28 @@ class ScannerConfig(BaseModel):
         with open(path) as f:
             data = yaml.safe_load(f) or {}
 
+        # Overlay env vars into data dict before construction
+        telegram_data = data.get("telegram", {})
+        telegram_data["api_id"] = int(os.environ.get("TELEGRAM_API_ID", "0"))
+        telegram_data["api_hash"] = os.environ.get("TELEGRAM_API_HASH", "")
+        data["telegram"] = telegram_data
+
+        classification_data = data.get("classification", {})
+        classification_data["api_key"] = os.environ.get("ANTHROPIC_API_KEY", "")
+        data["classification"] = classification_data
+
         config = cls(**data)
 
-        # Overlay env vars (secrets never go in YAML)
-        config.telegram.api_id = int(os.environ.get("TELEGRAM_API_ID", "0"))
-        config.telegram.api_hash = os.environ.get("TELEGRAM_API_HASH", "")
-        config.classification.api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        # Validate required secrets
+        missing = []
+        if not config.telegram.api_id:
+            missing.append("TELEGRAM_API_ID")
+        if not config.telegram.api_hash:
+            missing.append("TELEGRAM_API_HASH")
+        if not config.classification.api_key:
+            missing.append("ANTHROPIC_API_KEY")
+        if missing:
+            raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
         return config
 

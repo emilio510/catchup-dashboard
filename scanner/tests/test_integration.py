@@ -83,10 +83,6 @@ async def test_scanner_run_full_pipeline(tmp_path: Path) -> None:
     conversation = _make_conversation()
     expected_item = _make_triage_item()
 
-    fake_me = MagicMock()
-    fake_me.first_name = "Emile"
-    fake_me.id = 42
-
     with (
         patch("src.scanner.TelegramReader") as MockReader,
         patch("src.scanner.Classifier") as MockClassifier,
@@ -97,9 +93,8 @@ async def test_scanner_run_full_pipeline(tmp_path: Path) -> None:
         reader_instance.disconnect = AsyncMock()
         # read_all returns (conversations, total_dialogs, filtered_count)
         reader_instance.read_all = AsyncMock(return_value=([conversation], 5, 2))
-        # _client.get_me() used to get display name
-        reader_instance._client = MagicMock()
-        reader_instance._client.get_me = AsyncMock(return_value=fake_me)
+        reader_instance.me_name = "Emile"
+        reader_instance.send_to_saved_messages = AsyncMock()
         MockReader.return_value = reader_instance
 
         # --- Classifier mock setup ---
@@ -167,7 +162,8 @@ async def test_scanner_run_no_conversations(tmp_path: Path) -> None:
         reader_instance.disconnect = AsyncMock()
         # No conversations after filtering
         reader_instance.read_all = AsyncMock(return_value=([], 10, 10))
-        reader_instance._client = MagicMock()
+        reader_instance.me_name = "Emile"
+        reader_instance.send_to_saved_messages = AsyncMock()
         MockReader.return_value = reader_instance
 
         classifier_instance = MagicMock()
@@ -216,10 +212,6 @@ async def test_scanner_run_priority_sorting(tmp_path: Path) -> None:
         preview="medium",
     )
 
-    fake_me = MagicMock()
-    fake_me.first_name = "Emile"
-    fake_me.id = 42
-
     conversation = _make_conversation()
 
     with (
@@ -230,8 +222,8 @@ async def test_scanner_run_priority_sorting(tmp_path: Path) -> None:
         reader_instance.connect = AsyncMock()
         reader_instance.disconnect = AsyncMock()
         reader_instance.read_all = AsyncMock(return_value=([conversation], 3, 0))
-        reader_instance._client = MagicMock()
-        reader_instance._client.get_me = AsyncMock(return_value=fake_me)
+        reader_instance.me_name = "Emile"
+        reader_instance.send_to_saved_messages = AsyncMock()
         MockReader.return_value = reader_instance
 
         classifier_instance = MagicMock()
