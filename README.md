@@ -37,6 +37,9 @@ When in doubt, the classifier always chooses the higher priority.
 - **Telegram digest** -- bot sends you a summary every 8h with a link to the dashboard
 - **Password auth** -- dashboard is protected behind a login page
 - **Mobile responsive** -- works on phone
+- **Reply from dashboard** -- edit AI drafts and send Telegram messages directly from the Kanban board (queued, sent within 2 min as you)
+- **Team-aware classification** -- knows your teammates (boss, lead dev) and lowers priority when they already responded
+- **@mention detection** -- direct pings to you are boosted to P0/P1
 - **Graceful degradation** -- if DB or digest fails, scan results are still saved to JSON
 
 ## Setup
@@ -196,7 +199,8 @@ The scanner runs automatically every 8 hours and sends a Telegram digest. When y
 1. Check the digest in Telegram (from your bot)
 2. Open the dashboard for the full Kanban view
 3. Expand cards to see context + draft replies
-4. Mark items as done or snooze them
+4. Edit the AI draft reply if needed, click **Send reply** -- message is sent as you within 2 min
+5. Or mark items as done / snooze them
 
 ### Manual scan
 
@@ -218,7 +222,7 @@ cd scanner && python -m src.cli --config config.yaml
 ### Dashboard features
 
 - **Kanban board** with P0/P1/P2/P3 columns
-- **Expandable cards** with context summary and AI-drafted reply
+- **Expandable cards** with context summary, editable AI-drafted reply, and **Send** button
 - **Filters** by source, chat type (DM/group), status (open/done/snoozed)
 - **Search** across chat names, people, and message previews
 - **Mark as done / Snooze** to clear handled items
@@ -233,20 +237,21 @@ catchup-dashboard/
     src/
       cli.py              # CLI entry point
       scanner.py          # Orchestrator (read -> dedup -> classify -> push -> digest)
+      sender.py           # Reply sender (polls pending_replies, sends via Telethon)
       telegram_reader.py  # Telethon: list dialogs, filter, deep read
       classifier.py       # Claude API batch classification
       database.py         # Postgres push + dedup queries (asyncpg)
       digest.py           # Telegram digest formatter
       config.py           # YAML + env config loader
       models.py           # Pydantic data models
-    tests/                # 35 tests
-    config.yaml           # Scanner configuration
-    cron/                 # launchd plist + wrapper script
+    tests/                # 38 tests
+    config.yaml           # Scanner configuration + team context
+    cron/                 # Scanner (8h) + sender (2min) launchd plists
 
   dashboard/              # Next.js 16 -- deployed on Vercel
     app/
       page.tsx            # Main page (Server Component)
-      actions.ts          # Server Actions (done/snooze/reopen)
+      actions.ts          # Server Actions (done/snooze/reopen/sendReply)
       api/login/route.ts  # Login API endpoint
       login/page.tsx      # Login page
     components/           # Kanban board, cards, filters, search
@@ -255,7 +260,7 @@ catchup-dashboard/
       types.ts            # Shared TypeScript types
     middleware.ts          # Auth middleware
 
-  schema.sql              # Postgres schema (scans + triage_items tables)
+  schema.sql              # Postgres schema (scans + triage_items + pending_replies)
 ```
 
 ### Smart filtering pipeline
@@ -280,6 +285,9 @@ catchup-dashboard/
 - **Retry with backoff:** API overload errors are retried (3 attempts, exponential backoff, inter-batch delay).
 - **Graceful degradation:** If DB push or digest fails, scan results are still saved to JSON and the scan continues.
 - **Bot API for digest:** Digest is sent via the Telegram Bot API (not your user account), so messages come from the bot.
+- **Queue-based replies:** Dashboard queues replies in Postgres; a sender script (2-min cron) sends them via Telethon as your user account. Row locking prevents duplicate sends.
+- **Team-aware classification:** Knows your boss (Matthew Graham) and lead dev (efecarranza). If they already responded, priority is lowered automatically.
+- **@mention boosting:** Messages that @mention you or address you by name are boosted to P0/P1.
 
 ## Roadmap
 
@@ -290,6 +298,9 @@ catchup-dashboard/
 - [x] Telegram digest via bot
 - [x] Automated cron scheduling (8h)
 - [x] Password authentication
+- [x] Reply from dashboard (edit AI drafts + send via Telegram)
+- [x] Team-aware classification (boss + lead dev responses)
+- [x] @mention detection and priority boosting
 - [ ] Notion source (mentions/tags where your team needs input)
 - [ ] GitHub source (issues/PRs assigned or requesting review)
 - [ ] Google Calendar (deadlines that boost priority of related chats)
