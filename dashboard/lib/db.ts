@@ -50,14 +50,13 @@ export async function getTriageItems(filters?: {
 
   const escapedSearch = (filters?.search ?? "").replace(/[%_\\]/g, "\\$&");
 
-  // Get the most recent triage item per chat (DISTINCT ON chat_id)
-  // This works across scans -- dedup may skip re-classifying unchanged chats
-  // but their items from previous scans are still valid and shown here
+  // Get the most recent triage item per chat (DISTINCT ON chat_id for Telegram)
+  // Calendar items (chat_id IS NULL) use their own id as the dedup key
   const rows = await sql`
     SELECT * FROM (
-      SELECT DISTINCT ON (chat_id) *
+      SELECT DISTINCT ON (COALESCE(chat_id::text, id::text)) *
       FROM triage_items
-      ORDER BY chat_id, scanned_at DESC
+      ORDER BY COALESCE(chat_id::text, id::text), scanned_at DESC
     ) latest
     WHERE user_status = ${userStatus}
       AND (${filters?.source ?? ""} = '' OR source = ${filters?.source ?? ""})
