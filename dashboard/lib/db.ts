@@ -93,3 +93,15 @@ export async function updateItemStatus(
     WHERE id = ${itemId}::uuid
   `;
 }
+
+export async function queueReply(
+  triageItemId: string,
+  chatId: number,
+  messageText: string
+): Promise<void> {
+  const sql = getDb();
+  await sql`
+    INSERT INTO pending_replies (triage_item_id, chat_id, message_text)
+    VALUES (${triageItemId}::uuid, ${chatId}, ${messageText})
+  `;
+}
