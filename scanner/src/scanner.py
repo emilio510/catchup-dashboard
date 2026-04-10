@@ -4,6 +4,7 @@ import json
 import logging
 from pathlib import Path
 
+from src.calendar_scanner import CalendarEvent, fetch_calendar_events, find_related_chat_names, format_events_for_classifier
 from src.classifier import Classifier
 from src.config import ScannerConfig
 from src.database import push_to_database
@@ -111,6 +112,25 @@ class Scanner:
                     stats=stats,
                 )
 
+            # 3b. Fetch calendar events (if enabled)
+            calendar_events: list[CalendarEvent] = []
+            if self._config.calendar.enabled:
+                try:
+                    calendar_events = await fetch_calendar_events(
+                        credentials_path=Path(self._config.calendar.credentials_path),
+                        token_path=Path(self._config.calendar.token_path),
+                        days_ahead=self._config.calendar.days_ahead,
+                    )
+                    self._classifier.calendar_context = format_events_for_classifier(calendar_events)
+
+                    if calendar_events and conversations:
+                        all_chat_names = [c.dialog.name for c in conversations]
+                        related = find_related_chat_names(calendar_events, all_chat_names)
+                        if related:
+                            logger.info("Calendar: %d chats related to upcoming events: %s", len(related), related)
+                except Exception:
+                    logger.exception("Failed to fetch calendar events (continuing without)")
+
             # 4. Get display name for classification
             my_name = self._reader.me_name
 
@@ -123,9 +143,12 @@ class Scanner:
             items.sort(key=lambda i: priority_order.get(i.priority, 99))
 
             # 7. Build result
+            sources = ["telegram"]
+            if calendar_events:
+                sources.append("calendar")
             stats = self._compute_stats(items)
             result = ScanResult(
-                sources=["telegram"],
+                sources=sources,
                 dialogs_listed=total_dialogs,
                 dialogs_filtered=filtered_count,
                 dialogs_classified=len(conversations),

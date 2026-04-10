@@ -24,3 +24,7 @@ node_modules/
 .superpowers/
 scanner/cron/*.log
 .vercel
+
+# Google Calendar OAuth credentials
+scanner/token.json
+scanner/credentials.json

@@ -46,12 +46,22 @@ def build_classification_prompt(
     conversations: list[ConversationData],
     my_display_name: str,
     user_context: str,
+    calendar_context: str = "",
 ) -> str:
     parts = [
         f"User context: {user_context}",
         f"User's display name in chats: {my_display_name}",
         f"Current time: {datetime.now(timezone.utc).isoformat()}",
         "",
+    ]
+
+    if calendar_context:
+        parts.append(calendar_context)
+        parts.append("")
+        parts.append("IMPORTANT: If a conversation is related to an upcoming calendar event, boost its priority. Meeting prep should be at least P1.")
+        parts.append("")
+
+    parts += [
         "Conversations to classify:",
         "",
     ]
@@ -130,6 +140,7 @@ class Classifier:
     def __init__(self, config: ScannerConfig) -> None:
         self._config = config
         self._client = anthropic.AsyncAnthropic(api_key=config.classification.api_key)
+        self.calendar_context: str = ""
 
     async def classify_batch(
         self, conversations: list[ConversationData], my_display_name: str
@@ -138,6 +149,7 @@ class Classifier:
             conversations,
             my_display_name,
             self._config.classification.user_context,
+            calendar_context=self.calendar_context,
         )
 
         response = None

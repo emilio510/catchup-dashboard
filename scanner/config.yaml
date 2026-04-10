@@ -94,3 +94,9 @@ output:
   dashboard_url: https://catchup-dashboard-akgemilio.vercel.app
   digest_chat_id: 1744950707  # Your Telegram user ID (bot sends TO you)
   # digest_bot_token: set via DIGEST_BOT_TOKEN env var
+
+calendar:
+  enabled: false  # Set to true after OAuth setup
+  credentials_path: credentials.json
+  token_path: token.json
+  days_ahead: 7
