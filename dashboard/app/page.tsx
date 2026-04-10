@@ -31,7 +31,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     );
   }
 
-  const items = await getTriageItems(scan.id, {
+  const items = await getTriageItems({
     userStatus: params.status ?? "open",
     source: params.source,
     chatType: params.chatType,
@@ -48,8 +48,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   return (
     <main className="max-w-7xl mx-auto px-6 py-8">
       <StatsBar
-        total={scan.stats.total}
-        byPriority={scan.stats.by_priority}
+        total={items.length}
+        byPriority={{
+          P0: byPriority.P0.length,
+          P1: byPriority.P1.length,
+          P2: byPriority.P2.length,
+          P3: byPriority.P3.length,
+        }}
         scannedAt={scan.scanned_at}
         dialogsListed={scan.dialogs_listed}
         dialogsClassified={scan.dialogs_classified}

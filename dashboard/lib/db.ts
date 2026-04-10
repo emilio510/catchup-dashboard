@@ -39,7 +39,7 @@ export async function getLatestScan(): Promise<{
   };
 }
 
-export async function getTriageItems(scanId: string, filters?: {
+export async function getTriageItems(filters?: {
   userStatus?: string;
   source?: string;
   chatType?: string;
@@ -50,11 +50,13 @@ export async function getTriageItems(scanId: string, filters?: {
 
   const escapedSearch = (filters?.search ?? "").replace(/[%_\\]/g, "\\$&");
 
+  // Get the most recent triage item per chat (DISTINCT ON chat_id)
+  // This works across scans -- dedup may skip re-classifying unchanged chats
+  // but their items from previous scans are still valid and shown here
   const rows = await sql`
-    SELECT *
+    SELECT DISTINCT ON (chat_id) *
     FROM triage_items
-    WHERE scan_id = ${scanId}::uuid
-      AND user_status = ${userStatus}
+    WHERE user_status = ${userStatus}
       AND (${filters?.source ?? ""} = '' OR source = ${filters?.source ?? ""})
       AND (${filters?.chatType ?? ""} = '' OR chat_type = ${filters?.chatType ?? ""})
       AND (
@@ -63,17 +65,19 @@ export async function getTriageItems(scanId: string, filters?: {
         OR waiting_person ILIKE ${"%" + escapedSearch + "%"}
         OR preview ILIKE ${"%" + escapedSearch + "%"}
       )
-    ORDER BY
-      CASE priority
-        WHEN 'P0' THEN 0
-        WHEN 'P1' THEN 1
-        WHEN 'P2' THEN 2
-        WHEN 'P3' THEN 3
-      END,
-      waiting_days DESC NULLS LAST
+    ORDER BY chat_id, scanned_at DESC
   `;
 
-  return rows as unknown as import("./types").TriageItem[];
+  // Sort by priority then waiting_days (DISTINCT ON requires ORDER BY chat_id first)
+  const priorityOrder: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
+  const sorted = [...rows].sort((a, b) => {
+    const pa = priorityOrder[a.priority as string] ?? 99;
+    const pb = priorityOrder[b.priority as string] ?? 99;
+    if (pa !== pb) return pa - pb;
+    return ((b.waiting_days as number) ?? 0) - ((a.waiting_days as number) ?? 0);
+  });
+
+  return sorted as unknown as import("./types").TriageItem[];
 }
 
 export async function updateItemStatus(

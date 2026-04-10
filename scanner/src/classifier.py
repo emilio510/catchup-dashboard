@@ -167,8 +167,17 @@ class Classifier:
         try:
             data = json.loads(response_text)
         except json.JSONDecodeError:
-            logger.error("Failed to parse classifier JSON response")
-            return []
+            # Claude sometimes wraps JSON in markdown code blocks
+            match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", response_text, re.DOTALL)
+            if match:
+                try:
+                    data = json.loads(match.group(1))
+                except json.JSONDecodeError:
+                    logger.error("Failed to parse classifier JSON (even after stripping markdown): %s", response_text[:300])
+                    return []
+            else:
+                logger.error("Failed to parse classifier JSON response: %s", response_text[:300])
+                return []
 
         if not isinstance(data, list):
             data = [data]
