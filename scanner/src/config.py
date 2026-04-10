@@ -37,6 +37,7 @@ class ClassificationConfig(BaseModel):
 class OutputConfig(BaseModel):
     telegram_digest: bool = True
     json_file: str = "scan_results.json"
+    database_url: str | None = None
 
 
 class ScannerConfig(BaseModel):
@@ -59,6 +60,12 @@ class ScannerConfig(BaseModel):
         classification_data = data.get("classification", {})
         classification_data["api_key"] = os.environ.get("ANTHROPIC_API_KEY", "")
         data["classification"] = classification_data
+
+        output_data = data.get("output", {})
+        db_url = os.environ.get("DATABASE_URL", "")
+        if db_url:
+            output_data["database_url"] = db_url
+        data["output"] = output_data
 
         config = cls(**data)
 

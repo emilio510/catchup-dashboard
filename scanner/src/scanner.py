@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.classifier import Classifier
 from src.config import ScannerConfig
+from src.database import push_to_database
 from src.digest import format_digest
 from src.models import PriorityStats, ScanResult, ScanStats, TriageItem
 from src.telegram_reader import TelegramReader
@@ -93,7 +94,11 @@ class Scanner:
             output_path.write_text(result.model_dump_json(indent=2))
             logger.info("Results written to %s", output_path)
 
-            # 8. Send Telegram digest
+            # 8. Push to database
+            if self._config.output.database_url:
+                await push_to_database(self._config.output.database_url, result)
+
+            # 9. Send Telegram digest
             if self._config.output.telegram_digest:
                 text = format_digest(result)
                 await self._reader.send_to_saved_messages(text)

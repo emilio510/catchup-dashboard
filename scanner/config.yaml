@@ -70,3 +70,4 @@ classification:
 output:
   telegram_digest: true
   json_file: scan_results.json
+  # database_url: set via DATABASE_URL env var
