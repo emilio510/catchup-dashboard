@@ -117,6 +117,15 @@ class TelegramReader:
         self, dialogs: list[DialogInfo]
     ) -> tuple[list[DialogInfo], int]:
         kept = [d for d in dialogs if not should_filter_dialog(d, self._config)]
+
+        # Apply max_dialogs limit (most recently active first)
+        max_dialogs = self._config.scan.max_dialogs
+        if max_dialogs is not None and len(kept) > max_dialogs:
+            kept.sort(
+                key=lambda d: d.last_message_date or datetime.min.replace(tzinfo=timezone.utc),
+                reverse=True,
+            )
+            kept = kept[:max_dialogs]
         filtered_count = len(dialogs) - len(kept)
         logger.info(
             "Filtered %d/%d dialogs (kept %d)",

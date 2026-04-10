@@ -15,6 +15,7 @@ class ScanConfig(BaseModel):
     window_days: int = 7
     messages_per_chat: int = 20
     batch_size: int = 5
+    max_dialogs: int | None = None
 
 
 class TelegramConfig(BaseModel):

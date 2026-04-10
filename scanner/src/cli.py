@@ -37,6 +37,12 @@ def parse_args() -> argparse.Namespace:
         help="Override output JSON path",
     )
     parser.add_argument(
+        "--max-dialogs",
+        type=int,
+        default=None,
+        help="Limit number of dialogs to scan (most recently active first)",
+    )
+    parser.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="Enable debug logging",
@@ -66,6 +72,10 @@ async def async_main() -> None:
     if args.output is not None:
         config = config.model_copy(
             update={"output": config.output.model_copy(update={"json_file": str(args.output)})}
+        )
+    if args.max_dialogs is not None:
+        config = config.model_copy(
+            update={"scan": config.scan.model_copy(update={"max_dialogs": args.max_dialogs})}
         )
 
     scanner = Scanner(config)

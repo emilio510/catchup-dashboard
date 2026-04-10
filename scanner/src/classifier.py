@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import re
 from datetime import datetime, timezone
 
 import anthropic
@@ -73,8 +75,17 @@ def parse_classification_response(
     try:
         data = json.loads(response_text)
     except json.JSONDecodeError:
-        logger.error("Failed to parse classifier response as JSON")
-        return []
+        # Claude sometimes wraps JSON in markdown code blocks
+        match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", response_text, re.DOTALL)
+        if match:
+            try:
+                data = json.loads(match.group(1))
+            except json.JSONDecodeError:
+                logger.error("Failed to parse classifier JSON (even after stripping markdown)")
+                return []
+        else:
+            logger.error("Failed to parse classifier JSON response: %s", response_text[:200])
+            return []
 
     if not isinstance(data, list):
         data = [data]
@@ -129,12 +140,23 @@ class Classifier:
             self._config.classification.user_context,
         )
 
-        response = await self._client.messages.create(
-            model=self._config.classification.model,
-            max_tokens=self._config.classification.max_tokens,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = await self._client.messages.create(
+                    model=self._config.classification.model,
+                    max_tokens=self._config.classification.max_tokens,
+                    system=SYSTEM_PROMPT,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                break
+            except (anthropic.OverloadedError, anthropic.RateLimitError) as exc:
+                if attempt == max_retries - 1:
+                    logger.error("API failed after %d retries: %s", max_retries, exc)
+                    return []
+                wait = 2 ** (attempt + 1)
+                logger.warning("API error (attempt %d/%d), retrying in %ds: %s", attempt + 1, max_retries, wait, exc)
+                await asyncio.sleep(wait)
 
         if not response.content or response.content[0].type != "text":
             logger.error("Unexpected response: stop_reason=%s", response.stop_reason)
@@ -183,12 +205,17 @@ class Classifier:
         batch_size = self._config.scan.batch_size
         all_items = []
 
+        total_batches = (len(conversations) + batch_size - 1) // batch_size
         for i in range(0, len(conversations), batch_size):
+            if i > 0:
+                delay = 60.0 / self._config.classification.rate_limit_rpm
+                await asyncio.sleep(delay)
+
             batch = conversations[i : i + batch_size]
             logger.info(
                 "Classifying batch %d/%d (%d conversations)",
                 i // batch_size + 1,
-                (len(conversations) + batch_size - 1) // batch_size,
+                total_batches,
                 len(batch),
             )
             items = await self.classify_batch(batch, my_display_name)
