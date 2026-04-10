@@ -1,6 +1,6 @@
 # Catch-up Dashboard
 
-Personal priority tracker that scans your Telegram conversations, classifies them by urgency using AI, and presents them in a Kanban dashboard you can access from anywhere.
+Personal priority tracker that scans your Telegram conversations, classifies them by urgency using AI, and presents them in a Kanban dashboard you can access from anywhere. Automated scans run every 8 hours and send a digest straight to your Telegram.
 
 **Problem:** You read all your messages but don't always reply. No unread indicator means important conversations fall through the cracks across dozens of active chats.
 
@@ -9,12 +9,15 @@ Personal priority tracker that scans your Telegram conversations, classifies the
 ## How It Works
 
 ```
-Scanner (Python, runs locally)
-  Telethon MTProto -> List dialogs -> Filter -> Deep read -> Claude API classification
-  -> Push to Postgres + optional Telegram digest
+Scanner (Python, runs locally on cron every 8h)
+  Telethon MTProto -> List dialogs -> Filter -> Dedup -> Deep read
+  -> Claude API classification -> Push to Postgres
+  -> Telegram digest via bot
 
 Dashboard (Next.js, deployed on Vercel)
-  Reads from Postgres -> Kanban board (P0/P1/P2/P3) -> Mark done / Snooze / Search
+  Reads from Postgres -> Kanban board (P0/P1/P2/P3)
+  -> Mark done / Snooze / Search / Filter
+  -> Password-protected
 ```
 
 ### Priority Levels
@@ -26,13 +29,24 @@ Dashboard (Next.js, deployed on Vercel)
 
 When in doubt, the classifier always chooses the higher priority.
 
+## Features
+
+- **Smart filtering** -- skips channels, bots, blacklisted chats, and chats where you spoke last
+- **Deduplication** -- only reclassifies chats with new messages since last scan; items you marked "done" stay done
+- **Kanban dashboard** -- 4 priority columns, expandable cards with context + AI draft reply
+- **Telegram digest** -- bot sends you a summary every 8h with a link to the dashboard
+- **Password auth** -- dashboard is protected behind a login page
+- **Mobile responsive** -- works on phone
+- **Graceful degradation** -- if DB or digest fails, scan results are still saved to JSON
+
 ## Setup
 
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 18+
+- Node.js 18+ with pnpm
 - A Telegram account with API credentials ([my.telegram.org](https://my.telegram.org))
+- A Telegram bot for digests (create via [@BotFather](https://t.me/BotFather))
 - An Anthropic API key ([console.anthropic.com](https://console.anthropic.com))
 - A Neon Postgres database ([neon.tech](https://neon.tech))
 - A Vercel account for deployment ([vercel.com](https://vercel.com))
@@ -62,23 +76,20 @@ Create `scanner/.env`:
 TELEGRAM_API_ID=your-api-id
 TELEGRAM_API_HASH=your-api-hash
 ANTHROPIC_API_KEY=your-anthropic-api-key
-SESSION_NAME=your-telegram-username
 DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+DIGEST_BOT_TOKEN=your-bot-token-from-botfather
 ```
 
 Create `dashboard/.env.local`:
 
 ```env
 DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+DASHBOARD_PASSWORD=your-chosen-password
 ```
 
 ### 3. Set up the database
 
-Run the schema against your Neon database. You can use the Neon SQL Editor or any Postgres client:
-
-```sql
--- Copy contents of schema.sql and run it
-```
+Run `schema.sql` against your Neon database via the Neon SQL Editor or any Postgres client.
 
 ### 4. Configure the scanner
 
@@ -86,17 +97,18 @@ Edit `scanner/config.yaml`:
 
 ```yaml
 scan:
-  window_days: 7          # How far back to scan
+  window_days: 7          # How far back to scan messages
   messages_per_chat: 20   # Messages to read per chat
   batch_size: 5           # Chats per Claude API call
   max_dialogs: 50         # Top N most active dialogs to scan
 
 telegram:
   session_name: your-username
-  blacklist:              # Chats to skip
+  blacklist:              # Chats to skip entirely
     - "News Channel"
     - "Monitoring Alerts"
-  bot_whitelist: []       # Bots to include
+    - "Public Community Group"
+  bot_whitelist: []       # Bots to include in scan
 
 classification:
   model: claude-sonnet-4-20250514
@@ -107,9 +119,15 @@ classification:
     This helps the AI classify priorities accurately.
 
 output:
-  telegram_digest: true   # Send summary to Saved Messages
+  telegram_digest: true
   json_file: scan_results.json
+  dashboard_url: https://your-dashboard.vercel.app
+  digest_chat_id: 123456789  # Your Telegram user ID (bot sends TO you)
+  # digest_bot_token: set via DIGEST_BOT_TOKEN env var
+  # database_url: set via DATABASE_URL env var
 ```
+
+To find your Telegram user ID, send a message to [@userinfobot](https://t.me/userinfobot).
 
 ### 5. First scan
 
@@ -123,7 +141,7 @@ python -m src.cli --config config.yaml --no-digest -v
 
 This connects to Telegram, scans your chats, classifies them, and pushes results to the database.
 
-### 6. Launch the dashboard
+### 6. Launch the dashboard locally
 
 ```bash
 cd dashboard
@@ -136,20 +154,54 @@ pnpm dev
 ```bash
 cd dashboard
 vercel link --yes
-vercel env add DATABASE_URL production  # paste your Neon connection string
+printf "your-db-url" | vercel env add DATABASE_URL production
+printf "your-password" | vercel env add DASHBOARD_PASSWORD production
 vercel --prod
+```
+
+Note: use `printf` (not `echo`) to avoid trailing newlines in env var values.
+
+### 8. Set up automated scanning (macOS)
+
+Install the launchd cron job to scan every 8 hours:
+
+```bash
+cp scanner/cron/catchup-scanner.plist ~/Library/LaunchAgents/com.akgemilio.catchup-scanner.plist
+
+# Edit the plist to update paths if your username differs
+# Then load it:
+launchctl load ~/Library/LaunchAgents/com.akgemilio.catchup-scanner.plist
+
+# Verify it's running:
+launchctl list | grep catchup
+
+# Test a manual trigger:
+launchctl start com.akgemilio.catchup-scanner
+```
+
+Logs go to `scanner/cron/scan.log`.
+
+For Linux, use a standard crontab entry instead:
+```bash
+crontab -e
+# Add: 0 */8 * * * cd /path/to/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml
 ```
 
 ## Usage
 
 ### Daily workflow
 
-```bash
-# Run the scanner (takes ~3 min for 50 dialogs)
-cd scanner && python -m src.cli --config config.yaml
+The scanner runs automatically every 8 hours and sends a Telegram digest. When you want to catch up:
 
-# Open your dashboard
-open https://your-dashboard.vercel.app
+1. Check the digest in Telegram (from your bot)
+2. Open the dashboard for the full Kanban view
+3. Expand cards to see context + draft replies
+4. Mark items as done or snooze them
+
+### Manual scan
+
+```bash
+cd scanner && python -m src.cli --config config.yaml
 ```
 
 ### CLI options
@@ -171,70 +223,86 @@ open https://your-dashboard.vercel.app
 - **Search** across chat names, people, and message previews
 - **Mark as done / Snooze** to clear handled items
 - **Mobile responsive** -- usable from phone
+- **Password protected** -- cookie-based auth with 30-day sessions
 
 ## Architecture
 
 ```
 catchup-dashboard/
-  scanner/              # Python -- runs locally
+  scanner/                # Python -- runs locally
     src/
-      cli.py            # CLI entry point
-      scanner.py        # Orchestrator
-      telegram_reader.py # Telethon: list, filter, deep read
-      classifier.py     # Claude API batch classification
-      digest.py         # Telegram digest formatter
-      database.py       # Postgres push (asyncpg)
-      config.py         # YAML + env config loader
-      models.py         # Pydantic data models
-    tests/              # 30 tests
-    config.yaml         # Scanner configuration
+      cli.py              # CLI entry point
+      scanner.py          # Orchestrator (read -> dedup -> classify -> push -> digest)
+      telegram_reader.py  # Telethon: list dialogs, filter, deep read
+      classifier.py       # Claude API batch classification
+      database.py         # Postgres push + dedup queries (asyncpg)
+      digest.py           # Telegram digest formatter
+      config.py           # YAML + env config loader
+      models.py           # Pydantic data models
+    tests/                # 35 tests
+    config.yaml           # Scanner configuration
+    cron/                 # launchd plist + wrapper script
 
-  dashboard/            # Next.js -- deployed on Vercel
+  dashboard/              # Next.js 16 -- deployed on Vercel
     app/
-      page.tsx          # Main page (Server Component)
-      actions.ts        # Server Actions (done/snooze)
-    components/         # Kanban board, cards, filters
+      page.tsx            # Main page (Server Component)
+      actions.ts          # Server Actions (done/snooze/reopen)
+      api/login/route.ts  # Login API endpoint
+      login/page.tsx      # Login page
+    components/           # Kanban board, cards, filters, search
     lib/
-      db.ts             # Neon Postgres queries
-      types.ts          # Shared TypeScript types
+      db.ts               # Neon Postgres queries (DISTINCT ON for cross-scan dedup)
+      types.ts            # Shared TypeScript types
+    middleware.ts          # Auth middleware
 
-  schema.sql            # Postgres schema
+  schema.sql              # Postgres schema (scans + triage_items tables)
 ```
 
-### Smart filtering
+### Smart filtering pipeline
 
-The scanner applies these filters before classification to reduce noise:
-
-1. **Blacklist** -- skip named chats (configurable in config.yaml)
-2. **Channels** -- skip broadcast channels (can't reply anyway)
-3. **Bots** -- skip bot chats (unless whitelisted)
-4. **You spoke last** -- skip chats where you sent the last message (ball is in their court)
-5. **Max dialogs** -- take only the N most recently active chats
+```
+874 total dialogs
+  -> Remove blacklisted (43 entries)
+  -> Remove broadcast channels
+  -> Remove bot chats
+  -> Remove chats where you spoke last
+  -> Take top 50 most recently active
+  -> Dedup: skip unchanged chats from previous scan
+  -> ~5-15 chats actually classified per run
+```
 
 ### Key design decisions
 
 - **No unread-based filtering:** The scanner detects who's waiting by analyzing message content, not read status. This works even if you read everything and clear notifications.
-- **Batch classification:** Chats are sent to Claude in batches of 5 for cost efficiency.
-- **Retry with backoff:** API overload errors are retried automatically (3 attempts, exponential backoff).
-- **Graceful degradation:** If the database push fails, scan results are still saved to JSON.
+- **Deduplication:** Only chats with new messages since the last scan are reclassified. Items you marked "done" stay done unless new messages arrive.
+- **Cross-scan queries:** The dashboard shows the most recent item per chat across all scans, not just the latest scan. This means items from previous scans persist correctly.
+- **Batch classification:** Chats are sent to Claude in batches of 5 for cost efficiency (~$0.02-0.05 per scan).
+- **Retry with backoff:** API overload errors are retried (3 attempts, exponential backoff, inter-batch delay).
+- **Graceful degradation:** If DB push or digest fails, scan results are still saved to JSON and the scan continues.
+- **Bot API for digest:** Digest is sent via the Telegram Bot API (not your user account), so messages come from the bot.
 
 ## Roadmap
 
+- [x] Telegram scanner with smart filtering
+- [x] AI classification (P0-P3) with Claude
+- [x] Next.js Kanban dashboard on Vercel
+- [x] Deduplication across scans
+- [x] Telegram digest via bot
+- [x] Automated cron scheduling (8h)
+- [x] Password authentication
 - [ ] Notion source (mentions/tags where your team needs input)
 - [ ] GitHub source (issues/PRs assigned or requesting review)
 - [ ] Google Calendar (deadlines that boost priority of related chats)
 - [ ] Slack source
 - [ ] Discord source
-- [ ] Deduplication (don't resurface "done" items on re-scan)
-- [ ] Cron scheduling (auto-scan every 2h)
-- [ ] Authentication on the dashboard
 
 ## Security Notes
 
 - **Session file** (`*.session`) is a Telegram bearer credential. Never commit it.
-- **API keys** live in `.env` files, never in config.yaml or source code.
-- **Scanner is read-only** -- it never sends messages on your behalf (except the optional digest to your own Saved Messages).
-- **Message content** is not stored long-term. Only truncated previews and AI summaries go to the database.
+- **All secrets** (API keys, bot token, DB URL) live in `.env` files, never in config.yaml or source code.
+- **Dashboard** is password-protected. Cookie-based auth with 30-day httpOnly sessions.
+- **Scanner is read-only** -- it never sends messages on your behalf (digest is sent via the bot, not your account).
+- **Message content** is not stored verbatim. Only truncated previews and AI summaries go to the database.
 
 ## License
 
