@@ -1,6 +1,7 @@
+import inspect
 import json
 from datetime import datetime, timezone
-from src.database import build_scan_insert, build_item_insert
+from src.database import build_scan_insert, build_item_insert, get_previous_items
 from src.models import TriageItem, ScanResult, ScanStats, PriorityStats
 
 
@@ -39,3 +40,17 @@ def test_build_item_insert():
     assert params[4] == "Marc"
     assert params[8] == "P0"
     assert params[10] == ["deal blocker"]
+
+
+def test_get_previous_items_signature():
+    sig = inspect.signature(get_previous_items)
+    params = list(sig.parameters.keys())
+    assert params == ["database_url", "chat_ids"], (
+        f"Expected signature (database_url, chat_ids), got {params}"
+    )
+
+
+def test_get_previous_items_is_async():
+    assert inspect.iscoroutinefunction(get_previous_items), (
+        "get_previous_items must be an async function"
+    )

@@ -94,7 +94,8 @@ async def get_previous_items(database_url: str, chat_ids: list[int]) -> dict[int
     try:
         rows = await conn.fetch("""
             SELECT DISTINCT ON (chat_id)
-                id, chat_id, scanned_at, user_status, last_message_at
+                id, chat_id, scanned_at, user_status, last_message_at,
+                priority, status, preview, context_summary
             FROM triage_items
             WHERE chat_id = ANY($1)
             ORDER BY chat_id, scanned_at DESC
@@ -105,6 +106,10 @@ async def get_previous_items(database_url: str, chat_ids: list[int]) -> dict[int
                 "scanned_at": row["scanned_at"],
                 "user_status": row["user_status"],
                 "last_message_at": row["last_message_at"],
+                "priority": row["priority"],
+                "status": row["status"],
+                "preview": row["preview"],
+                "context_summary": row["context_summary"],
             }
             for row in rows
         }
