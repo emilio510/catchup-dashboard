@@ -1,0 +1,13 @@
+# Catchup Dashboard - Linux crontab entries
+# Install with: crontab crontab.txt
+# Or manually: crontab -e and paste these lines
+#
+# Update paths if your install directory differs from ~/catchup-dashboard
+
+# Scanner at 7am, 1pm, 9pm UTC (3x/day)
+0 7 * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml >> cron/scan.log 2>&1
+0 13 * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml >> cron/scan.log 2>&1
+0 21 * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml >> cron/scan.log 2>&1
+
+# Sender: polls pending_replies every 2 min, sends queued messages via Telethon
+*/2 * * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.sender --config config.yaml >> cron/sender.log 2>&1

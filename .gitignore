@@ -25,6 +25,9 @@ node_modules/
 scanner/cron/*.log
 .vercel
 
+# Scanner output (contains personal message data)
+scanner/scan_results.json
+
 # Google Calendar OAuth credentials
 scanner/token.json
 scanner/credentials.json
