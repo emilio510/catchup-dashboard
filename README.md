@@ -344,7 +344,7 @@ catchup-dashboard/
 - [x] Next.js Kanban dashboard on Vercel
 - [x] Deduplication across scans
 - [x] Telegram digest via bot
-- [x] Automated cron scheduling (8h)
+- [x] VPS deployment (always-on, survives laptop sleep)
 - [x] Password authentication
 - [x] Reply from dashboard (edit AI drafts + send via Telegram)
 - [x] Team-aware classification (boss + lead dev responses)
@@ -355,13 +355,32 @@ catchup-dashboard/
 - [ ] Slack source
 - [ ] Discord source
 
-## Security Notes
+## Security
 
-- **Session file** (`*.session`) is a Telegram bearer credential. Never commit it.
-- **All secrets** (API keys, bot token, DB URL) live in `.env` files, never in config.yaml or source code.
-- **Dashboard** is password-protected. Cookie-based auth with 30-day httpOnly sessions.
-- **Scanner is read-only** -- it never sends messages on your behalf (digest is sent via the bot, not your account).
-- **Message content** is not stored verbatim. Only truncated previews and AI summaries go to the database.
+Your Telegram messages contain sensitive business data. The system is hardened at every layer:
+
+### VPS (scanner host)
+- **Firewall (UFW)** -- only SSH (port 22) allowed inbound, all other ports blocked
+- **SSH key-only auth** -- password authentication disabled, root login disabled
+- **File permissions** -- session file, .env, OAuth credentials, scan results all chmod 600 (owner-only)
+- **No web server** -- scanner runs as a cron job, no exposed HTTP endpoints
+
+### Data handling
+- **Session file** (`*.session`) is a Telegram bearer credential. Never commit it. chmod 600 on VPS.
+- **All secrets** (API keys, bot token, DB URL) live in `.env` files, never in config.yaml or source code
+- **Message content** is not stored verbatim -- only truncated previews and AI-generated summaries go to the database
+- **scan_results.json** is gitignored (contains message previews)
+
+### Dashboard (Vercel)
+- **Password-protected** -- cookie-based auth with 30-day httpOnly sessions
+- **Server Actions** validate UUID inputs before any DB query
+- **Middleware** protects all routes except the login page
+- **Database** connection uses SSL (Neon enforces `sslmode=require`)
+
+### Reply queue
+- **Row locking** (`SELECT FOR UPDATE SKIP LOCKED`) prevents duplicate message sends
+- **Server-side chat_id lookup** -- the dashboard never trusts client-provided chat IDs
+- **Retry limit** (3 attempts) -- failed sends don't loop forever
 
 ## License
 
