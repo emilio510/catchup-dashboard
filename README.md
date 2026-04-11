@@ -9,7 +9,7 @@ Personal priority tracker that scans your Telegram conversations, classifies the
 ## How It Works
 
 ```
-Scanner (Python, runs locally on cron every 8h)
+Scanner (Python, runs on VPS cron 3x/day)
   Telethon MTProto -> List dialogs -> Filter -> Dedup -> Deep read
   -> Claude API classification -> Push to Postgres
   -> Google Calendar -> Standalone event cards (P0-P3 by proximity)
@@ -166,31 +166,48 @@ vercel --prod
 
 Note: use `printf` (not `echo`) to avoid trailing newlines in env var values.
 
-### 8. Set up automated scanning (macOS)
+### 8. Set up automated scanning
 
-Install the launchd cron job to scan every 8 hours:
+The scanner needs to run on an always-on machine (VPS recommended) so it works even when your laptop is closed.
+
+**Option A: VPS (recommended)**
+
+Deploy to any Linux VPS (Ubuntu, Debian, etc.):
+
+```bash
+# On the VPS:
+git clone https://github.com/YOUR_USERNAME/catchup-dashboard.git
+cd catchup-dashboard/scanner
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+# Copy secrets from your local machine:
+# scp scanner/.env scanner/akgemilio.session scanner/token.json scanner/credentials.json user@vps:~/catchup-dashboard/scanner/
+
+# Set up crontab (scanner 3x/day + sender every 2 min):
+crontab -e
+```
+
+Add these lines:
+```cron
+# Scanner at 7am, 1pm, 9pm UTC
+0 7 * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml >> cron/scan.log 2>&1
+0 13 * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml >> cron/scan.log 2>&1
+0 21 * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml >> cron/scan.log 2>&1
+
+# Sender (polls for queued replies every 2 min)
+*/2 * * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.sender --config config.yaml >> cron/sender.log 2>&1
+```
+
+**Option B: macOS (runs only when laptop is open)**
 
 ```bash
 cp scanner/cron/catchup-scanner.plist ~/Library/LaunchAgents/com.akgemilio.catchup-scanner.plist
-
-# Edit the plist to update paths if your username differs
-# Then load it:
+# Edit paths in the plist if your username differs
 launchctl load ~/Library/LaunchAgents/com.akgemilio.catchup-scanner.plist
-
-# Verify it's running:
-launchctl list | grep catchup
-
-# Test a manual trigger:
-launchctl start com.akgemilio.catchup-scanner
 ```
 
-Logs go to `scanner/cron/scan.log`.
-
-For Linux, use a standard crontab entry instead:
-```bash
-crontab -e
-# Add: 0 */8 * * * cd /path/to/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml
-```
+Note: macOS launchd `StartCalendarInterval` fires missed jobs after waking from sleep, but won't run while the laptop is closed.
 
 ### 9. (Optional) Connect Google Calendar
 
@@ -274,7 +291,7 @@ catchup-dashboard/
       models.py           # Pydantic data models
     tests/                # 38 tests
     config.yaml           # Scanner configuration + team context
-    cron/                 # Scanner (8h) + sender (2min) launchd plists
+    cron/                 # launchd plists (macOS) or use crontab (VPS)
 
   dashboard/              # Next.js 16 -- deployed on Vercel
     app/
