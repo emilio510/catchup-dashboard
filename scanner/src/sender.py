@@ -46,7 +46,7 @@ async def process_pending_replies(config: ScannerConfig) -> int:
         logger.warning("No DATABASE_URL configured, skipping sender")
         return 0
 
-    conn = await asyncpg.connect(config.output.database_url)
+    conn = await asyncpg.connect(config.output.database_url, timeout=30)
     try:
         async with conn.transaction():
             rows = await conn.fetch(build_fetch_pending_query())

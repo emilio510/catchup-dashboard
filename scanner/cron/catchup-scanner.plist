@@ -8,8 +8,27 @@
     <array>
         <string>/Users/akgemilio/Projects/catchup-dashboard/scanner/cron/run-scan.sh</string>
     </array>
-    <key>StartInterval</key>
-    <integer>28800</integer>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Hour</key>
+            <integer>7</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>13</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>21</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+    </array>
     <key>StandardOutPath</key>
     <string>/Users/akgemilio/Projects/catchup-dashboard/scanner/cron/launchd-stdout.log</string>
     <key>StandardErrorPath</key>
