@@ -83,3 +83,54 @@ def test_parse_handles_missing_fields():
     assert len(items) == 1
     assert items[0].priority == "P2"
     assert items[0].status == "READ_NO_REPLY"
+
+
+def test_build_prompt_includes_previous_context():
+    conv = make_conversation("Logic Protocol Core", [
+        ("Marc", "Any update on the vault?", False),
+    ])
+    previous_context = {
+        "Logic Protocol Core": {
+            "priority": "P0",
+            "status": "READ_NO_REPLY",
+            "user_status": "open",
+            "preview": "What about the vault params?",
+            "context_summary": "Marc asking about vault parameters",
+        }
+    }
+    prompt = build_classification_prompt(
+        [conv], "akgemilio", "I work at TokenLogic.",
+        previous_context=previous_context,
+    )
+    assert "Previous classification" in prompt
+    assert "P0" in prompt
+    assert "What about the vault params?" in prompt
+
+
+def test_build_prompt_includes_done_item_context():
+    conv = make_conversation("Alice DM", [
+        ("Alice", "Thanks!", False),
+    ])
+    previous_context = {
+        "Alice DM": {
+            "priority": "P1",
+            "status": "READ_NO_REPLY",
+            "user_status": "done",
+            "preview": "Can you review this PR?",
+            "context_summary": "Alice asked for PR review",
+        }
+    }
+    prompt = build_classification_prompt(
+        [conv], "akgemilio", "I work at TokenLogic.",
+        previous_context=previous_context,
+    )
+    assert "done" in prompt.lower()
+    assert "Alice asked for PR review" in prompt
+
+
+def test_build_prompt_without_previous_context():
+    conv = make_conversation("New Chat", [
+        ("Bob", "Hey, got a minute?", False),
+    ])
+    prompt = build_classification_prompt([conv], "akgemilio", "I work at TokenLogic.")
+    assert "Previous classification" not in prompt

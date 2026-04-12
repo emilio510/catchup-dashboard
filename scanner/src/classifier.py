@@ -24,6 +24,17 @@ RULES:
 - P2 (Respond): Someone asked a question or made a request, but not urgent.
 - P3 (Monitor): FYI, general discussion, no specific action needed from the user.
 
+PRIORITY STABILITY:
+- If a previous classification is provided, do not downgrade priority unless the new messages
+  clearly resolve the conversation (e.g., the issue was fixed, the question was answered by
+  someone else). When in doubt, keep the previous priority.
+
+DONE ITEM AWARENESS:
+- If the user previously marked an item as "done", only re-triage as open if the new messages
+  genuinely reopen the conversation (new question, new request, new topic). Reactions, "thanks",
+  acknowledgments, thumbs-up, and other low-signal messages should NOT reopen a done item.
+  For these cases, set priority to P3 and status to MONITORING.
+
 For each conversation, output a JSON array with one object per conversation:
 {
   "chat_name": "exact chat name",
@@ -47,6 +58,7 @@ def build_classification_prompt(
     my_display_name: str,
     user_context: str,
     calendar_context: str = "",
+    previous_context: dict[str, dict] | None = None,
 ) -> str:
     parts = [
         f"User context: {user_context}",
@@ -68,6 +80,20 @@ def build_classification_prompt(
 
     for conv in conversations:
         parts.append(f"--- CHAT: {conv.dialog.name} (type: {conv.chat_type}) ---")
+
+        # Inject previous classification context if available
+        prev = (previous_context or {}).get(conv.dialog.name)
+        if prev:
+            parts.append("Previous classification:")
+            parts.append(f"  - Priority: {prev['priority']}")
+            parts.append(f"  - Status: {prev['status']}")
+            parts.append(f"  - User status: {prev['user_status']}")
+            if prev.get("context_summary"):
+                parts.append(f"  - Previous summary: \"{prev['context_summary']}\"")
+            if prev.get("preview"):
+                parts.append(f"  - Previous preview: \"{prev['preview']}\"")
+            parts.append("")
+
         for msg in conv.messages:
             parts.append(msg.format())
         parts.append("")
