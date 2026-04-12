@@ -54,9 +54,9 @@ export async function getTriageItems(filters?: {
   // Calendar items (chat_id IS NULL) use their own id as the dedup key
   const rows = await sql`
     SELECT * FROM (
-      SELECT DISTINCT ON (COALESCE(chat_id::text, id::text)) *
+      SELECT DISTINCT ON (COALESCE(chat_id::text, source_id, id::text)) *
       FROM triage_items
-      ORDER BY COALESCE(chat_id::text, id::text), scanned_at DESC
+      ORDER BY COALESCE(chat_id::text, source_id, id::text), scanned_at DESC
     ) latest
     WHERE user_status = ${userStatus}
       AND (${filters?.source ?? ""} = '' OR source = ${filters?.source ?? ""})
@@ -135,7 +135,7 @@ export async function getAnalyticsData(days: number = 30): Promise<{
     JOIN triage_items ti ON ti.scan_id = s.id
     WHERE s.scanned_at >= ${cutoff}::timestamptz
       AND ti.user_status = 'open'
-      AND ti.source = 'telegram'
+      AND ti.source IN ('telegram', 'notion')
     GROUP BY s.scanned_at, ti.priority
     ORDER BY s.scanned_at ASC
   `;

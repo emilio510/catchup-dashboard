@@ -23,6 +23,7 @@ export interface TriageItem {
   scanned_at: string;
   chat_id: number | null;
   message_id: number | null;
+  source_id: string | null;
   user_status: UserStatus;
   user_status_at: string | null;
 }
