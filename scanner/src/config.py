@@ -59,6 +59,7 @@ class EscalationConfig(BaseModel):
 
 class NotionDatabaseConfig(BaseModel):
     id: str
+    title_property: str = "Name"
     assignee_property: str = "Assignee"
     status_property: str = "Status"
     open_statuses: list[str] = Field(default_factory=lambda: ["Not started", "In progress"])

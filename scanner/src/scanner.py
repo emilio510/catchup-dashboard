@@ -12,7 +12,7 @@ from src.notion_scanner import (
 )
 from src.classifier import Classifier
 from src.config import ScannerConfig
-from src.database import delete_calendar_items, push_to_database
+from src.database import delete_calendar_items, get_previous_notion_items, push_to_database
 from src.digest import format_digest
 from src.models import PriorityStats, ScanResult, ScanStats, TriageItem
 from src.telegram_reader import TelegramReader
@@ -149,6 +149,38 @@ class Scanner:
                     )
                 except Exception:
                     logger.exception("Failed to fetch Notion items (continuing without)")
+
+            # Dedup Notion items against previous scan
+            if self._config.output.database_url and (notion_rule_items or notion_mention_groups):
+                try:
+                    all_notion_source_ids = [
+                        item.source_id for item in notion_rule_items if item.source_id
+                    ] + [
+                        group["page_id"] for group in notion_mention_groups.values()
+                    ]
+                    if all_notion_source_ids:
+                        prev_notion = await get_previous_notion_items(
+                            self._config.output.database_url, all_notion_source_ids
+                        )
+                        # Filter out items that haven't changed (still open, same preview)
+                        notion_rule_items = [
+                            item for item in notion_rule_items
+                            if item.source_id not in prev_notion
+                            or prev_notion[item.source_id]["user_status"] == "done"
+                            or prev_notion[item.source_id]["preview"] != item.preview
+                        ]
+                        # Filter mention groups to only pages with new/changed comments
+                        notion_mention_groups = {
+                            title: group for title, group in notion_mention_groups.items()
+                            if group["page_id"] not in prev_notion
+                            or prev_notion[group["page_id"]]["user_status"] == "done"
+                            or prev_notion[group["page_id"]]["preview"] != (
+                                f"{group['comments'][0]['created_by_name']}: {group['comments'][0]['text']}"[:200]
+                                if group["comments"] else ""
+                            )
+                        }
+                except Exception:
+                    logger.exception("Failed to dedup Notion items, including all")
 
             if not conversations:
                 logger.info("No conversations need reclassification after dedup")

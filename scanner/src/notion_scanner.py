@@ -274,11 +274,16 @@ async def query_database_assignments(
     token: str,
     database_id: str,
     user_id: str,
+    title_property: str,
     assignee_property: str,
     status_property: str,
     open_statuses: list[str],
 ) -> list[dict]:
     """Query a Notion database for items assigned to the given user."""
+    if not open_statuses:
+        logger.warning("No open_statuses configured for database %s, skipping", database_id)
+        return []
+
     all_items: list[dict] = []
     start_cursor: str | None = None
 
@@ -317,7 +322,6 @@ async def query_database_assignments(
             )
             break
 
-        title_property = "Name"  # default; callers rely on parse helper
         batch = parse_database_query_response(
             data,
             title_property=title_property,
@@ -397,6 +401,7 @@ async def scan_notion(
                 token,
                 database_id=db_cfg.id,
                 user_id=user_id,
+                title_property=db_cfg.title_property,
                 assignee_property=db_cfg.assignee_property,
                 status_property=db_cfg.status_property,
                 open_statuses=db_cfg.open_statuses,

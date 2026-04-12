@@ -53,5 +53,6 @@ CREATE TABLE pending_replies (
 
 CREATE INDEX idx_pending_replies_status ON pending_replies(status);
 
-CREATE INDEX idx_triage_dedup ON triage_items (COALESCE(chat_id::text, id::text), scanned_at DESC);
+CREATE INDEX idx_triage_dedup ON triage_items (COALESCE(chat_id::text, source_id, id::text), scanned_at DESC);
 CREATE INDEX idx_triage_chat_id_scanned ON triage_items (chat_id, scanned_at DESC);
+CREATE INDEX idx_triage_source_id ON triage_items (source_id, scanned_at DESC) WHERE source_id IS NOT NULL;
