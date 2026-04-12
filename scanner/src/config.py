@@ -57,6 +57,21 @@ class EscalationConfig(BaseModel):
     P3: int | None = None
 
 
+class NotionDatabaseConfig(BaseModel):
+    id: str
+    assignee_property: str = "Assignee"
+    status_property: str = "Status"
+    open_statuses: list[str] = Field(default_factory=lambda: ["Not started", "In progress"])
+
+
+class NotionConfig(BaseModel):
+    enabled: bool = False
+    user_id: str = ""
+    token: str = ""  # Set via NOTION_TOKEN env var
+    databases: list[NotionDatabaseConfig] = Field(default_factory=list)
+    monitor_pages: list[str] = Field(default_factory=list)
+
+
 class ScannerConfig(BaseModel):
     scan: ScanConfig = Field(default_factory=ScanConfig)
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
@@ -64,6 +79,7 @@ class ScannerConfig(BaseModel):
     output: OutputConfig = Field(default_factory=OutputConfig)
     calendar: CalendarConfig = Field(default_factory=CalendarConfig)
     escalation: EscalationConfig = Field(default_factory=EscalationConfig)
+    notion: NotionConfig = Field(default_factory=NotionConfig)
 
     @classmethod
     def from_yaml(cls, path: Path) -> ScannerConfig:
@@ -88,6 +104,12 @@ class ScannerConfig(BaseModel):
         if bot_token:
             output_data["digest_bot_token"] = bot_token
         data["output"] = output_data
+
+        notion_data = data.get("notion", {})
+        notion_token = os.environ.get("NOTION_TOKEN", "")
+        if notion_token:
+            notion_data["token"] = notion_token
+        data["notion"] = notion_data
 
         config = cls(**data)
 

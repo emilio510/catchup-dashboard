@@ -106,3 +106,16 @@ escalation:
   P1: 48
   P2: null  # no reminder
   P3: null
+
+notion:
+  enabled: false
+  user_id: ""  # Your Notion user ID (UUID)
+  # token: set via NOTION_TOKEN env var
+  databases: []
+    # - id: "database-uuid"
+    #   assignee_property: "Assignee"
+    #   status_property: "Status"
+    #   open_statuses: ["Not started", "In progress"]
+  monitor_pages: []
+    # - "page-uuid-1"
+    # - "page-uuid-2"

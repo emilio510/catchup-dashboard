@@ -143,3 +143,65 @@ escalation:
     config = ScannerConfig.from_yaml(config_file)
     assert config.escalation.P0 == 12
     assert config.escalation.P1 == 24
+
+
+def test_notion_config_defaults():
+    from src.config import NotionConfig
+    config = NotionConfig()
+    assert config.enabled is False
+    assert config.user_id == ""
+    assert config.databases == []
+    assert config.monitor_pages == []
+
+
+def test_notion_config_from_yaml(tmp_path):
+    from src.config import ScannerConfig
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("""
+telegram:
+  blacklist: []
+notion:
+  enabled: true
+  user_id: "user-uuid-123"
+  databases:
+    - id: "db-uuid-456"
+      assignee_property: "Owner"
+      status_property: "State"
+      open_statuses: ["Todo", "Doing"]
+  monitor_pages:
+    - "page-uuid-789"
+""")
+    import os
+    os.environ.setdefault("TELEGRAM_API_ID", "12345")
+    os.environ.setdefault("TELEGRAM_API_HASH", "test_hash")
+    os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
+    config = ScannerConfig.from_yaml(config_file)
+    assert config.notion.enabled is True
+    assert config.notion.user_id == "user-uuid-123"
+    assert len(config.notion.databases) == 1
+    assert config.notion.databases[0].id == "db-uuid-456"
+    assert config.notion.databases[0].assignee_property == "Owner"
+    assert config.notion.databases[0].open_statuses == ["Todo", "Doing"]
+    assert config.notion.monitor_pages == ["page-uuid-789"]
+
+
+def test_notion_token_from_env(tmp_path):
+    from src.config import ScannerConfig
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("""
+telegram:
+  blacklist: []
+notion:
+  enabled: true
+  user_id: "user-uuid"
+""")
+    import os
+    os.environ["NOTION_TOKEN"] = "ntn_test_token_123"
+    os.environ.setdefault("TELEGRAM_API_ID", "12345")
+    os.environ.setdefault("TELEGRAM_API_HASH", "test_hash")
+    os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
+    try:
+        config = ScannerConfig.from_yaml(config_file)
+        assert config.notion.token == "ntn_test_token_123"
+    finally:
+        del os.environ["NOTION_TOKEN"]
