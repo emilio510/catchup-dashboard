@@ -218,7 +218,7 @@ class Scanner:
 
                     if bot_token and chat_id:
                         import httpx
-                        async with httpx.AsyncClient() as http:
+                        async with httpx.AsyncClient(timeout=10.0) as http:
                             resp = await http.post(
                                 f"https://api.telegram.org/bot{bot_token}/sendMessage",
                                 json={"chat_id": chat_id, "text": text},

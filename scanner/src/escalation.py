@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid as uuid_mod
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
@@ -127,44 +128,95 @@ async def send_reminders(config: ScannerConfig) -> int:
         return 0
 
     thresholds = config.escalation.model_dump()
+    now = datetime.now(timezone.utc)
 
-    overdue = await find_overdue_items(config.output.database_url, thresholds)
-    if not overdue:
-        logger.debug("No overdue items")
-        return 0
+    conn = await asyncpg.connect(config.output.database_url, timeout=30)
+    try:
+        async with conn.transaction():
+            # Claim rows atomically; FOR UPDATE SKIP LOCKED prevents concurrent runs
+            rows = await conn.fetch("""
+                SELECT id, chat_name, priority, waiting_person, waiting_since,
+                       preview, last_reminded_at
+                FROM triage_items
+                WHERE user_status = 'open'
+                  AND source = 'telegram'
+                  AND waiting_since IS NOT NULL
+                  AND chat_id IS NOT NULL
+                ORDER BY scanned_at DESC
+                FOR UPDATE SKIP LOCKED
+            """)
 
-    logger.info("Found %d overdue items to remind", len(overdue))
+            # DISTINCT ON chat_name + should_remind filter (done in Python because
+            # DISTINCT ON is incompatible with FOR UPDATE)
+            seen_chats: set[str] = set()
+            overdue: list[dict] = []
+            for row in rows:
+                chat_name = row["chat_name"]
+                if chat_name in seen_chats:
+                    continue
+                seen_chats.add(chat_name)
 
-    sent_ids = []
-    async with httpx.AsyncClient(timeout=10.0) as http:
-        for item in overdue:
-            text = format_reminder(
-                chat_name=item["chat_name"],
-                priority=item["priority"],
-                waiting_person=item["waiting_person"],
-                hours_overdue=item["hours_overdue"],
-                preview=item["preview"],
-            )
-            try:
-                resp = await http.post(
-                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                    json={"chat_id": chat_id, "text": text},
-                )
-                if resp.is_success:
-                    sent_ids.append(item["id"])
-                    logger.info("Sent reminder for %s", item["chat_name"])
-                else:
-                    logger.error("Failed to send reminder for %s: status %d", item["chat_name"], resp.status_code)
-            except httpx.HTTPError:
-                logger.error("HTTP error sending reminder for %s", item["chat_name"])
+                if should_remind(
+                    row["priority"],
+                    row["waiting_since"],
+                    row["last_reminded_at"],
+                    thresholds,
+                    now,
+                ):
+                    hours_overdue = (now - row["waiting_since"]).total_seconds() / 3600
+                    overdue.append({
+                        "id": str(row["id"]),
+                        "chat_name": chat_name,
+                        "priority": row["priority"],
+                        "waiting_person": row["waiting_person"],
+                        "hours_overdue": hours_overdue,
+                        "preview": row["preview"],
+                    })
 
-    if sent_ids:
-        try:
-            await mark_reminded(config.output.database_url, sent_ids)
-        except Exception:
-            logger.exception("Failed to mark %d items as reminded", len(sent_ids))
+            if not overdue:
+                logger.debug("No overdue items")
+                return 0
 
-    return len(sent_ids)
+            logger.info("Found %d overdue items to remind", len(overdue))
+
+            sent_ids: list[str] = []
+            async with httpx.AsyncClient(timeout=10.0) as http:
+                for item in overdue:
+                    text = format_reminder(
+                        chat_name=item["chat_name"],
+                        priority=item["priority"],
+                        waiting_person=item["waiting_person"],
+                        hours_overdue=item["hours_overdue"],
+                        preview=item["preview"],
+                    )
+                    try:
+                        resp = await http.post(
+                            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                            json={"chat_id": chat_id, "text": text},
+                        )
+                        if resp.is_success:
+                            sent_ids.append(item["id"])
+                            logger.info("Sent reminder for %s", item["chat_name"])
+                        else:
+                            logger.error(
+                                "Failed to send reminder for %s: status %d",
+                                item["chat_name"],
+                                resp.status_code,
+                            )
+                    except httpx.HTTPError:
+                        logger.error("HTTP error sending reminder for %s", item["chat_name"])
+
+            # Mark reminded within the same transaction to keep reads and writes atomic
+            if sent_ids:
+                await conn.execute("""
+                    UPDATE triage_items
+                    SET last_reminded_at = now()
+                    WHERE id = ANY($1::uuid[])
+                """, [uuid_mod.UUID(id_str) for id_str in sent_ids])
+
+            return len(sent_ids)
+    finally:
+        await conn.close()
 
 
 async def async_main() -> None:

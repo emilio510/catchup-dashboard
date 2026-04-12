@@ -167,8 +167,9 @@ async def async_main() -> None:
         level=logging.DEBUG if args.verbose else logging.INFO,
     )
 
-    config = ScannerConfig.from_yaml(args.config)
-    await poll_loop(config, args.config)
+    config_path = args.config.resolve()
+    config = ScannerConfig.from_yaml(config_path)
+    await poll_loop(config, config_path)
 
 
 def main() -> None:
