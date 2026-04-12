@@ -118,3 +118,49 @@ export async function queueReplyAndMarkDone(
     WHERE id = ${triageItemId}::uuid
   `;
 }
+
+export async function getAnalyticsData(days: number = 30): Promise<{
+  labels: string[];
+  datasets: { P0: number[]; P1: number[]; P2: number[]; P3: number[] };
+}> {
+  const sql = getDb();
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const rows = await sql`
+    SELECT
+      s.scanned_at,
+      ti.priority,
+      COUNT(*) as count
+    FROM scans s
+    JOIN triage_items ti ON ti.scan_id = s.id
+    WHERE s.scanned_at >= ${cutoff}::timestamptz
+      AND ti.user_status = 'open'
+      AND ti.source = 'telegram'
+    GROUP BY s.scanned_at, ti.priority
+    ORDER BY s.scanned_at ASC
+  `;
+
+  const scanMap = new Map<string, Record<string, number>>();
+  for (const row of rows) {
+    const key = row.scanned_at as string;
+    if (!scanMap.has(key)) {
+      scanMap.set(key, { P0: 0, P1: 0, P2: 0, P3: 0 });
+    }
+    const counts = scanMap.get(key)!;
+    counts[row.priority as string] = Number(row.count);
+  }
+
+  const labels: string[] = [];
+  const datasets = { P0: [] as number[], P1: [] as number[], P2: [] as number[], P3: [] as number[] };
+
+  for (const [timestamp, counts] of scanMap) {
+    const date = new Date(timestamp);
+    labels.push(date.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }));
+    datasets.P0.push(counts.P0);
+    datasets.P1.push(counts.P1);
+    datasets.P2.push(counts.P2);
+    datasets.P3.push(counts.P3);
+  }
+
+  return { labels, datasets };
+}
