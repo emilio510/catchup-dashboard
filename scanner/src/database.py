@@ -34,12 +34,12 @@ def build_item_insert(item: TriageItem, scan_id: str) -> tuple[str, list]:
             scan_id, source, chat_name, chat_type, waiting_person,
             preview, context_summary, draft_reply, priority, status,
             tags, last_message_at, waiting_since, waiting_days,
-            chat_id, message_id, scanned_at
+            chat_id, message_id, source_id, scanned_at
         ) VALUES (
             $1, $2, $3, $4, $5,
             $6, $7, $8, $9, $10,
             $11, $12, $13, $14,
-            $15, $16, $17
+            $15, $16, $17, $18
         )
     """
     params = [
@@ -59,6 +59,7 @@ def build_item_insert(item: TriageItem, scan_id: str) -> tuple[str, list]:
         item.waiting_days,
         item.chat_id,
         item.message_id,
+        item.source_id,
         datetime.now(timezone.utc),
     ]
     return query, params
@@ -102,6 +103,38 @@ async def get_previous_items(database_url: str, chat_ids: list[int]) -> dict[int
         """, chat_ids)
         return {
             row["chat_id"]: {
+                "id": str(row["id"]),
+                "scanned_at": row["scanned_at"],
+                "user_status": row["user_status"],
+                "last_message_at": row["last_message_at"],
+                "priority": row["priority"],
+                "status": row["status"],
+                "preview": row["preview"],
+                "context_summary": row["context_summary"],
+            }
+            for row in rows
+        }
+    finally:
+        await conn.close()
+
+
+async def get_previous_notion_items(database_url: str, source_ids: list[str]) -> dict[str, dict]:
+    """Get the most recent triage item per source_id for Notion dedup."""
+    if not source_ids:
+        return {}
+    conn = await asyncpg.connect(database_url)
+    try:
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (source_id)
+                id, source_id, scanned_at, user_status, last_message_at,
+                priority, status, preview, context_summary
+            FROM triage_items
+            WHERE source_id = ANY($1)
+              AND source = 'notion'
+            ORDER BY source_id, scanned_at DESC
+        """, source_ids)
+        return {
+            row["source_id"]: {
                 "id": str(row["id"]),
                 "scanned_at": row["scanned_at"],
                 "user_status": row["user_status"],

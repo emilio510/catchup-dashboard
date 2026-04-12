@@ -1,7 +1,7 @@
 import inspect
 import json
 from datetime import datetime, timezone
-from src.database import build_scan_insert, build_item_insert, get_previous_items
+from src.database import build_scan_insert, build_item_insert, get_previous_items, get_previous_notion_items
 from src.models import TriageItem, ScanResult, ScanStats, PriorityStats
 
 
@@ -53,4 +53,30 @@ def test_get_previous_items_signature():
 def test_get_previous_items_is_async():
     assert inspect.iscoroutinefunction(get_previous_items), (
         "get_previous_items must be an async function"
+    )
+
+
+def test_build_item_insert_with_source_id():
+    item = TriageItem(
+        source="notion", chat_name="Q2 Budget Review", chat_type="dm",
+        preview="@Emile fill in the Mantle section",
+        priority="P1", status="NEW",
+        source_id="abc-123-page-id",
+    )
+    query, params = build_item_insert(item, "550e8400-e29b-41d4-a716-446655440000")
+    assert "source_id" in query
+    assert params[16] == "abc-123-page-id"  # source_id is after message_id
+
+
+def test_get_previous_notion_items_signature():
+    sig = inspect.signature(get_previous_notion_items)
+    params = list(sig.parameters.keys())
+    assert params == ["database_url", "source_ids"], (
+        f"Expected signature (database_url, source_ids), got {params}"
+    )
+
+
+def test_get_previous_notion_items_is_async():
+    assert inspect.iscoroutinefunction(get_previous_notion_items), (
+        "get_previous_notion_items must be an async function"
     )

@@ -29,6 +29,7 @@ class TriageItem(BaseModel):
     waiting_days: float | None = None
     chat_id: int | None = None
     message_id: int | None = None
+    source_id: str | None = None
 
 
 class PriorityStats(BaseModel):

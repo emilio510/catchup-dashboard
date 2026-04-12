@@ -1,0 +1,1 @@
+ALTER TABLE triage_items ADD COLUMN IF NOT EXISTS source_id TEXT;

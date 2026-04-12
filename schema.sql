@@ -29,6 +29,7 @@ CREATE TABLE triage_items (
   scanned_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   chat_id          BIGINT,
   message_id       BIGINT,
+  source_id        TEXT,
   user_status      TEXT DEFAULT 'open',
   user_status_at   TIMESTAMPTZ,
   last_reminded_at TIMESTAMPTZ
