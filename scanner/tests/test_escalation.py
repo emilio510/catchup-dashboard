@@ -57,3 +57,22 @@ def test_format_reminder():
     assert "P0" in text
     assert "Marc" in text
     assert "26h" in text
+
+
+def test_should_remind_p0_exactly_at_threshold():
+    thresholds = {"P0": 24, "P1": 48, "P2": None, "P3": None}
+    now = datetime(2026, 4, 12, 12, 0, tzinfo=timezone.utc)
+    waiting_since = datetime(2026, 4, 11, 12, 0, tzinfo=timezone.utc)  # exactly 24h
+    assert should_remind("P0", waiting_since, None, thresholds, now) is True
+
+
+def test_format_reminder_no_preview():
+    text = format_reminder(
+        chat_name="Test Chat",
+        priority="P1",
+        waiting_person=None,
+        hours_overdue=50.0,
+        preview=None,
+    )
+    assert "Someone" in text
+    assert "Preview" not in text

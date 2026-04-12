@@ -74,6 +74,7 @@ async def find_overdue_items(
             WHERE user_status = 'open'
               AND source = 'telegram'
               AND waiting_since IS NOT NULL
+              AND chat_id IS NOT NULL
             ORDER BY COALESCE(chat_id::text, id::text), scanned_at DESC
         """)
 
@@ -125,12 +126,7 @@ async def send_reminders(config: ScannerConfig) -> int:
         logger.warning("No bot token or chat ID configured for escalation")
         return 0
 
-    thresholds = {
-        "P0": config.escalation.P0,
-        "P1": config.escalation.P1,
-        "P2": config.escalation.P2,
-        "P3": config.escalation.P3,
-    }
+    thresholds = config.escalation.model_dump()
 
     overdue = await find_overdue_items(config.output.database_url, thresholds)
     if not overdue:
@@ -140,7 +136,7 @@ async def send_reminders(config: ScannerConfig) -> int:
     logger.info("Found %d overdue items to remind", len(overdue))
 
     sent_ids = []
-    async with httpx.AsyncClient() as http:
+    async with httpx.AsyncClient(timeout=10.0) as http:
         for item in overdue:
             text = format_reminder(
                 chat_name=item["chat_name"],
@@ -149,18 +145,24 @@ async def send_reminders(config: ScannerConfig) -> int:
                 hours_overdue=item["hours_overdue"],
                 preview=item["preview"],
             )
-            resp = await http.post(
-                f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                json={"chat_id": chat_id, "text": text},
-            )
-            if resp.is_success:
-                sent_ids.append(item["id"])
-                logger.info("Sent reminder for %s", item["chat_name"])
-            else:
-                logger.error("Failed to send reminder for %s: %s", item["chat_name"], resp.text)
+            try:
+                resp = await http.post(
+                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                    json={"chat_id": chat_id, "text": text},
+                )
+                if resp.is_success:
+                    sent_ids.append(item["id"])
+                    logger.info("Sent reminder for %s", item["chat_name"])
+                else:
+                    logger.error("Failed to send reminder for %s: status %d", item["chat_name"], resp.status_code)
+            except httpx.HTTPError:
+                logger.error("HTTP error sending reminder for %s", item["chat_name"])
 
     if sent_ids:
-        await mark_reminded(config.output.database_url, sent_ids)
+        try:
+            await mark_reminded(config.output.database_url, sent_ids)
+        except Exception:
+            logger.exception("Failed to mark %d items as reminded", len(sent_ids))
 
     return len(sent_ids)
 
