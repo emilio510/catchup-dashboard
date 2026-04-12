@@ -30,7 +30,8 @@ CREATE TABLE triage_items (
   chat_id          BIGINT,
   message_id       BIGINT,
   user_status      TEXT DEFAULT 'open',
-  user_status_at   TIMESTAMPTZ
+  user_status_at   TIMESTAMPTZ,
+  last_reminded_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_triage_scan ON triage_items(scan_id);

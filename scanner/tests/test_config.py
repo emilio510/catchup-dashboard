@@ -113,3 +113,33 @@ output:
     assert config.is_blacklisted("MONITORING ALERTS")
     assert config.is_blacklisted("Monitoring Alerts")
     assert not config.is_blacklisted("Real Group")
+
+
+def test_escalation_config_defaults():
+    from src.config import EscalationConfig
+    config = EscalationConfig()
+    assert config.P0 == 24
+    assert config.P1 == 48
+    assert config.P2 is None
+    assert config.P3 is None
+
+
+def test_escalation_config_from_yaml(tmp_path):
+    from src.config import ScannerConfig
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("""
+telegram:
+  blacklist: []
+escalation:
+  P0: 12
+  P1: 24
+  P2: null
+  P3: null
+""")
+    import os
+    os.environ.setdefault("TELEGRAM_API_ID", "12345")
+    os.environ.setdefault("TELEGRAM_API_HASH", "test_hash")
+    os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
+    config = ScannerConfig.from_yaml(config_file)
+    assert config.escalation.P0 == 12
+    assert config.escalation.P1 == 24

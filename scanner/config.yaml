@@ -100,3 +100,9 @@ calendar:
   credentials_path: credentials.json
   token_path: token.json
   days_ahead: 7
+
+escalation:
+  P0: 24   # hours before reminder
+  P1: 48
+  P2: null  # no reminder
+  P3: null

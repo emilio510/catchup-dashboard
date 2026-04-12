@@ -50,12 +50,20 @@ class CalendarConfig(BaseModel):
     days_ahead: int = 7
 
 
+class EscalationConfig(BaseModel):
+    P0: int | None = 24   # hours before reminder, None = no reminder
+    P1: int | None = 48
+    P2: int | None = None
+    P3: int | None = None
+
+
 class ScannerConfig(BaseModel):
     scan: ScanConfig = Field(default_factory=ScanConfig)
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
     classification: ClassificationConfig = Field(default_factory=ClassificationConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
     calendar: CalendarConfig = Field(default_factory=CalendarConfig)
+    escalation: EscalationConfig = Field(default_factory=EscalationConfig)
 
     @classmethod
     def from_yaml(cls, path: Path) -> ScannerConfig:
