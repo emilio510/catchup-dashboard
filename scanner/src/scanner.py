@@ -5,6 +5,11 @@ import logging
 from pathlib import Path
 
 from src.calendar_scanner import CalendarEvent, events_to_triage_items, fetch_calendar_events, find_related_chat_names, format_events_for_classifier
+from src.notion_scanner import (
+    scan_notion,
+    format_notion_items_for_classifier,
+    comments_to_triage_items,
+)
 from src.classifier import Classifier
 from src.config import ScannerConfig
 from src.database import delete_calendar_items, push_to_database
@@ -130,13 +135,32 @@ class Scanner:
                 except Exception:
                     logger.exception("Failed to fetch calendar events (continuing without)")
 
+            # 3c. Fetch Notion items (if enabled)
+            notion_rule_items: list[TriageItem] = []
+            notion_mention_groups: dict[str, dict] = {}
+            if self._config.notion.enabled:
+                try:
+                    notion_rule_items, notion_mention_groups = await scan_notion(self._config)
+                    if notion_mention_groups:
+                        self._classifier.notion_context = format_notion_items_for_classifier(notion_mention_groups)
+                    logger.info(
+                        "Notion: %d assignments, %d pages with mentions",
+                        len(notion_rule_items), len(notion_mention_groups),
+                    )
+                except Exception:
+                    logger.exception("Failed to fetch Notion items (continuing without)")
+
             if not conversations:
                 logger.info("No conversations need reclassification after dedup")
                 # Still include calendar items even when no Telegram chats need reclassifying
                 sources = ["telegram"]
                 if calendar_items:
                     sources.append("calendar")
-                all_items = calendar_items
+                if notion_rule_items or notion_mention_groups:
+                    sources.append("notion")
+                all_items = calendar_items + notion_rule_items
+                if notion_mention_groups:
+                    all_items.extend(comments_to_triage_items(notion_mention_groups))
                 stats = self._compute_stats(all_items)
                 result = ScanResult(
                     sources=sources,
@@ -173,8 +197,11 @@ class Scanner:
             items = await self._classifier.classify_all(conversations, my_name, previous_context)
             logger.info("Classified %d items", len(items))
 
-            # 6. Add calendar items + sort by priority
+            # 6. Add calendar items + notion items + sort by priority
             items.extend(calendar_items)
+            items.extend(notion_rule_items)
+            if notion_mention_groups:
+                items.extend(comments_to_triage_items(notion_mention_groups))
             priority_order = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
             items.sort(key=lambda i: priority_order.get(i.priority, 99))
 
@@ -182,6 +209,8 @@ class Scanner:
             sources = ["telegram"]
             if calendar_events:
                 sources.append("calendar")
+            if notion_rule_items or notion_mention_groups:
+                sources.append("notion")
             stats = self._compute_stats(items)
             result = ScanResult(
                 sources=sources,

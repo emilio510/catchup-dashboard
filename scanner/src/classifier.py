@@ -59,6 +59,7 @@ def build_classification_prompt(
     user_context: str,
     calendar_context: str = "",
     previous_context: dict[str, dict] | None = None,
+    notion_context: str = "",
 ) -> str:
     parts = [
         f"User context: {user_context}",
@@ -71,6 +72,10 @@ def build_classification_prompt(
         parts.append(calendar_context)
         parts.append("")
         parts.append("IMPORTANT: If a conversation is related to an upcoming calendar event, boost its priority. Meeting prep should be at least P1.")
+        parts.append("")
+
+    if notion_context:
+        parts.append(notion_context)
         parts.append("")
 
     parts += [
@@ -167,6 +172,7 @@ class Classifier:
         self._config = config
         self._client = anthropic.AsyncAnthropic(api_key=config.classification.api_key)
         self.calendar_context: str = ""
+        self.notion_context: str = ""
 
     async def classify_batch(
         self,
@@ -180,6 +186,7 @@ class Classifier:
             self._config.classification.user_context,
             calendar_context=self.calendar_context,
             previous_context=previous_context,
+            notion_context=self.notion_context,
         )
 
         response = None
