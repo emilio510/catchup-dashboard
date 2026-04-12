@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { PRIORITY_CONFIG, type Priority } from "@/lib/types";
+import { AutoRefresh } from "@/components/auto-refresh";
 
 interface StatsBarProps {
   total: number;
@@ -15,10 +17,21 @@ export function StatsBar({ total, byPriority, scannedAt, dialogsListed, dialogsC
   return (
     <div className="mb-6">
       <div className="flex items-baseline justify-between mb-4">
-        <h1 className="text-xl font-bold">Catch-up Dashboard</h1>
-        <span className="text-sm text-[#8b949e]">
-          Last scan: {timeAgo} -- {dialogsClassified}/{dialogsListed} dialogs
-        </span>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold">Catch-up Dashboard</h1>
+          <Link
+            href="/analytics"
+            className="text-sm text-[#8b949e] hover:text-[#e6edf3] transition-colors"
+          >
+            Analytics
+          </Link>
+        </div>
+        <div className="flex items-center gap-4">
+          <AutoRefresh />
+          <span className="text-sm text-[#8b949e]">
+            Last scan: {timeAgo} -- {dialogsClassified}/{dialogsListed} dialogs
+          </span>
+        </div>
       </div>
       <div className="flex gap-3">
         <StatCard label="Total" value={total} color="#e6edf3" borderColor="#30363d" />
