@@ -60,6 +60,7 @@ When in doubt, the classifier always chooses the higher priority.
 - **Smarter dedup** -- classifier receives previous classification context, prevents priority flip-flops and false resurrection of done items
 - **Auto-refresh dashboard** -- data refreshes every 30 minutes with visibility awareness (skips when tab is hidden), plus manual refresh button
 - **Analytics** -- `/analytics` page with line chart showing open P0/P1/P2/P3 counts over time (7d/30d/90d selector)
+- **Notion source** -- scans for comment @mentions (AI-classified) and database assignments (rule-based P2). Configurable databases and monitored pages. Requires a Notion integration with access to the team workspace.
 
 ## Setup
 
@@ -319,6 +320,7 @@ catchup-dashboard/
       sender.py           # Reply sender (polls pending_replies, sends via Telethon)
       bot_listener.py     # Telegram bot listener (getUpdates polling, /scan command)
       escalation.py       # Overdue item reminders (P0 >24h, P1 >48h)
+      notion_scanner.py   # Notion API: comment @mentions + database assignments
       calendar_scanner.py # Google Calendar: fetch events, find related chats
       telegram_reader.py  # Telethon: list dialogs, filter, deep read
       classifier.py       # Claude API batch classification (with previous context)
@@ -326,7 +328,7 @@ catchup-dashboard/
       digest.py           # Telegram digest formatter
       config.py           # YAML + env config loader (scan, telegram, classification, escalation)
       models.py           # Pydantic data models
-    tests/                # 65 tests
+    tests/                # 78 tests
     config.yaml           # Scanner configuration + team context + escalation thresholds
     cron/                 # crontab entries (scanner 3x/day, sender 2min, escalation hourly)
     systemd/              # catchup-bot.service (bot listener)
@@ -405,7 +407,7 @@ catchup-dashboard/
 - [x] On-demand scan via Telegram bot command (/scan)
 - [x] Dashboard auto-refresh (30-min polling, visibility-aware)
 - [x] Analytics (inbox health trend chart, 7d/30d/90d)
-- [ ] Notion source (mentions/tags where your team needs input)
+- [x] Notion source (comment @mentions + database assignments, hybrid AI/rule-based classification)
 - [ ] Discord source (DMs/channels with unanswered messages)
 - [ ] GitHub source (issues/PRs assigned or requesting review)
 - [ ] Slack source
