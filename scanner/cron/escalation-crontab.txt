@@ -1,0 +1,2 @@
+# Escalation reminders -- every hour on the hour
+0 * * * * cd /home/ubuntu/catchup-dashboard/scanner && /home/ubuntu/catchup-dashboard/scanner/.venv/bin/python -m src.escalation --config config.yaml >> /home/ubuntu/catchup-dashboard/scanner/cron/escalation.log 2>&1
