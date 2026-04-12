@@ -1,0 +1,15 @@
+[Unit]
+Description=Catchup Dashboard Bot Listener
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/catchup-dashboard/scanner
+EnvironmentFile=/home/ubuntu/catchup-dashboard/scanner/.env
+ExecStart=/home/ubuntu/catchup-dashboard/scanner/.venv/bin/python -m src.bot_listener --config config.yaml
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
