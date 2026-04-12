@@ -168,6 +168,8 @@ async def async_main() -> None:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         level=logging.DEBUG if args.verbose else logging.INFO,
     )
+    # Suppress httpx request logging -- it includes full URLs which contain the bot token
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
     config_path = args.config.resolve()
     config = ScannerConfig.from_yaml(config_path)

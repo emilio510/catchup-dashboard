@@ -181,6 +181,8 @@ async def async_main() -> None:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         level=logging.DEBUG if args.verbose else logging.INFO,
     )
+    # Suppress httpx request logging -- URLs contain the bot token
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
     config = ScannerConfig.from_yaml(args.config)
     count = await send_reminders(config)
