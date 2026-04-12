@@ -91,6 +91,8 @@ async def poll_loop(config: ScannerConfig, config_path: Path) -> None:
         return
 
     offset = read_offset()
+    # Safe without a lock because updates are processed sequentially in the asyncio loop.
+    # If processing is ever parallelized (e.g., asyncio.gather), this needs an asyncio.Lock.
     scan_in_progress = False
 
     logger.info("Bot listener started (polling every %ds, offset=%d)", POLL_INTERVAL, offset)

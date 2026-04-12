@@ -60,62 +60,6 @@ def format_reminder(
     return "\n".join(lines)
 
 
-async def find_overdue_items(
-    database_url: str,
-    thresholds: dict[str, int | None],
-) -> list[dict]:
-    now = datetime.now(timezone.utc)
-    conn = await asyncpg.connect(database_url)
-    try:
-        rows = await conn.fetch("""
-            SELECT DISTINCT ON (COALESCE(chat_id::text, id::text))
-                id, chat_name, priority, waiting_person, waiting_since,
-                preview, last_reminded_at
-            FROM triage_items
-            WHERE user_status = 'open'
-              AND source = 'telegram'
-              AND waiting_since IS NOT NULL
-              AND chat_id IS NOT NULL
-            ORDER BY COALESCE(chat_id::text, id::text), scanned_at DESC
-        """)
-
-        overdue = []
-        for row in rows:
-            if should_remind(
-                row["priority"],
-                row["waiting_since"],
-                row["last_reminded_at"],
-                thresholds,
-                now,
-            ):
-                hours_overdue = (now - row["waiting_since"]).total_seconds() / 3600
-                overdue.append({
-                    "id": str(row["id"]),
-                    "chat_name": row["chat_name"],
-                    "priority": row["priority"],
-                    "waiting_person": row["waiting_person"],
-                    "hours_overdue": hours_overdue,
-                    "preview": row["preview"],
-                })
-        return overdue
-    finally:
-        await conn.close()
-
-
-async def mark_reminded(database_url: str, item_ids: list[str]) -> None:
-    if not item_ids:
-        return
-    conn = await asyncpg.connect(database_url)
-    try:
-        await conn.execute("""
-            UPDATE triage_items
-            SET last_reminded_at = now()
-            WHERE id = ANY($1::uuid[])
-        """, item_ids)
-    finally:
-        await conn.close()
-
-
 async def send_reminders(config: ScannerConfig) -> int:
     if not config.output.database_url:
         logger.warning("No DATABASE_URL configured")
@@ -133,28 +77,33 @@ async def send_reminders(config: ScannerConfig) -> int:
     conn = await asyncpg.connect(config.output.database_url, timeout=30)
     try:
         async with conn.transaction():
-            # Claim rows atomically; FOR UPDATE SKIP LOCKED prevents concurrent runs
+            # Claim rows atomically; FOR UPDATE SKIP LOCKED prevents concurrent runs.
+            # The subquery selects only the most-recent row per chat_id so we lock
+            # fewer rows and avoid reading stale historical entries.
             rows = await conn.fetch("""
-                SELECT id, chat_name, priority, waiting_person, waiting_since,
-                       preview, last_reminded_at
-                FROM triage_items
-                WHERE user_status = 'open'
-                  AND source = 'telegram'
-                  AND waiting_since IS NOT NULL
-                  AND chat_id IS NOT NULL
-                ORDER BY scanned_at DESC
+                SELECT ti.id, ti.chat_name, ti.chat_id, ti.priority, ti.waiting_person,
+                       ti.waiting_since, ti.preview, ti.last_reminded_at
+                FROM triage_items ti
+                WHERE ti.id IN (
+                    SELECT DISTINCT ON (chat_id) id
+                    FROM triage_items
+                    WHERE user_status = 'open'
+                      AND source = 'telegram'
+                      AND waiting_since IS NOT NULL
+                      AND chat_id IS NOT NULL
+                    ORDER BY chat_id, scanned_at DESC
+                )
                 FOR UPDATE SKIP LOCKED
             """)
 
-            # DISTINCT ON chat_name + should_remind filter (done in Python because
-            # DISTINCT ON is incompatible with FOR UPDATE)
-            seen_chats: set[str] = set()
+            # Dedup by chat_id as a safety net in case the subquery returns duplicates.
+            seen_chats: set[int] = set()
             overdue: list[dict] = []
             for row in rows:
-                chat_name = row["chat_name"]
-                if chat_name in seen_chats:
+                row_chat_id = row["chat_id"]
+                if row_chat_id in seen_chats:
                     continue
-                seen_chats.add(chat_name)
+                seen_chats.add(row_chat_id)
 
                 if should_remind(
                     row["priority"],
@@ -166,7 +115,7 @@ async def send_reminders(config: ScannerConfig) -> int:
                     hours_overdue = (now - row["waiting_since"]).total_seconds() / 3600
                     overdue.append({
                         "id": str(row["id"]),
-                        "chat_name": chat_name,
+                        "chat_name": row["chat_name"],
                         "priority": row["priority"],
                         "waiting_person": row["waiting_person"],
                         "hours_overdue": hours_overdue,
