@@ -169,13 +169,17 @@ class Classifier:
         self.calendar_context: str = ""
 
     async def classify_batch(
-        self, conversations: list[ConversationData], my_display_name: str
+        self,
+        conversations: list[ConversationData],
+        my_display_name: str,
+        previous_context: dict[str, dict] | None = None,
     ) -> list[TriageItem]:
         prompt = build_classification_prompt(
             conversations,
             my_display_name,
             self._config.classification.user_context,
             calendar_context=self.calendar_context,
+            previous_context=previous_context,
         )
 
         response = None
@@ -274,6 +278,7 @@ class Classifier:
         self,
         conversations: list[ConversationData],
         my_display_name: str,
+        previous_context: dict[str, dict] | None = None,
     ) -> list[TriageItem]:
         batch_size = self._config.scan.batch_size
         all_items = []
@@ -291,7 +296,7 @@ class Classifier:
                 total_batches,
                 len(batch),
             )
-            items = await self.classify_batch(batch, my_display_name)
+            items = await self.classify_batch(batch, my_display_name, previous_context)
             all_items.extend(items)
 
         return all_items

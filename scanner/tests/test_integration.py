@@ -112,8 +112,8 @@ async def test_scanner_run_full_pipeline(tmp_path: Path) -> None:
     # Verify read_all was called
     reader_instance.read_all.assert_awaited_once()
 
-    # Verify classify_all was called with the conversation and user name
-    classifier_instance.classify_all.assert_awaited_once_with([conversation], "Emile")
+    # Verify classify_all was called with the conversation, user name, and previous_context
+    classifier_instance.classify_all.assert_awaited_once_with([conversation], "Emile", None)
 
     # Verify result shape
     assert result.sources == ["telegram"]

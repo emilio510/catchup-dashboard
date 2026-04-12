@@ -69,6 +69,7 @@ class Scanner:
                 )
 
             # 3. Dedup: check which conversations need reclassification
+            previous_context: dict[str, dict] | None = None
             if self._config.output.database_url and conversations:
                 from src.database import get_previous_items, should_reclassify
                 chat_ids = [c.dialog.chat_id for c in conversations]
@@ -81,6 +82,7 @@ class Scanner:
                     previous = {}
 
                 to_classify = []
+                prev_context_by_name: dict[str, dict] = {}
                 for conv in conversations:
                     prev = previous.get(conv.dialog.chat_id)
                     if prev is None:
@@ -89,12 +91,21 @@ class Scanner:
                         last_msg = conv.messages[-1].date if conv.messages else None
                         if should_reclassify(last_msg, prev["scanned_at"], prev["user_status"]):
                             to_classify.append(conv)
+                            prev_context_by_name[conv.dialog.name] = {
+                                "priority": prev["priority"],
+                                "status": prev["status"],
+                                "user_status": prev["user_status"],
+                                "preview": prev["preview"],
+                                "context_summary": prev["context_summary"],
+                            }
 
                 logger.info(
                     "Dedup: %d to classify, %d unchanged",
                     len(to_classify), len(conversations) - len(to_classify),
                 )
                 conversations = to_classify
+                if prev_context_by_name:
+                    previous_context = prev_context_by_name
 
             # 3b. Fetch calendar events (if enabled) -- before dedup early-return
             # so calendar cards are always created
@@ -159,7 +170,7 @@ class Scanner:
             my_name = self._reader.me_name
 
             # 5. Classify
-            items = await self._classifier.classify_all(conversations, my_name)
+            items = await self._classifier.classify_all(conversations, my_name, previous_context)
             logger.info("Classified %d items", len(items))
 
             # 6. Add calendar items + sort by priority
