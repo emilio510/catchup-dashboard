@@ -1,23 +1,36 @@
 # Catch-up Dashboard
 
-Personal priority tracker that scans your Telegram conversations, classifies them by urgency using AI, and presents them in a Kanban dashboard you can access from anywhere. Automated scans run every 8 hours and send a digest straight to your Telegram.
+Personal priority tracker that scans your Telegram conversations, classifies them by urgency using AI, and presents them in a Kanban dashboard you can access from anywhere. Automated scans run 3x/day, on-demand via Telegram bot command, with escalation reminders for overdue items.
 
 **Problem:** You read all your messages but don't always reply. No unread indicator means important conversations fall through the cracks across dozens of active chats.
 
-**Solution:** A scanner reads your Telegram chats, detects who's waiting on a response, classifies priority (P0-P3), and pushes results to a live dashboard with filters, search, and draft replies.
+**Solution:** A scanner reads your Telegram chats, detects who's waiting on a response, classifies priority (P0-P3), and pushes results to a live dashboard with filters, search, draft replies, analytics, and auto-refresh.
 
 ## How It Works
 
 ```
-Scanner (Python, runs on VPS cron 3x/day)
+Scanner (Python, runs on VPS cron 3x/day + on-demand via bot)
   Telethon MTProto -> List dialogs -> Filter -> Dedup -> Deep read
-  -> Claude API classification -> Push to Postgres
+  -> Claude API classification (with previous context for stability)
+  -> Push to Postgres
   -> Google Calendar -> Standalone event cards (P0-P3 by proximity)
   -> Telegram digest via bot
+
+Bot Listener (Python, systemd service on VPS)
+  Polls Telegram getUpdates every 30s
+  -> /scan command triggers on-demand scan
+  -> Auth-gated to owner only
+
+Escalation (Python, hourly cron on VPS)
+  Queries overdue P0 (>24h) and P1 (>48h) items
+  -> Sends reminder via Telegram bot
+  -> Anti-spam via last_reminded_at tracking
 
 Dashboard (Next.js, deployed on Vercel)
   Reads from Postgres -> Kanban board (P0/P1/P2/P3)
   -> Mark done / Snooze / Search / Filter
+  -> Auto-refresh every 30 min + manual refresh button
+  -> /analytics page with inbox health trend chart
   -> Password-protected
 ```
 
@@ -42,6 +55,11 @@ When in doubt, the classifier always chooses the higher priority.
 - **Team-aware classification** -- knows your teammates (boss, lead dev) and lowers priority when they already responded
 - **@mention detection** -- direct pings to you are boosted to P0/P1
 - **Graceful degradation** -- if DB or digest fails, scan results are still saved to JSON
+- **On-demand scan** -- send `/scan` to your Telegram bot to trigger an immediate scan from anywhere
+- **Escalation reminders** -- overdue P0 (>24h) and P1 (>48h) items trigger automatic Telegram reminders, configurable per priority
+- **Smarter dedup** -- classifier receives previous classification context, prevents priority flip-flops and false resurrection of done items
+- **Auto-refresh dashboard** -- data refreshes every 30 minutes with visibility awareness (skips when tab is hidden), plus manual refresh button
+- **Analytics** -- `/analytics` page with line chart showing open P0/P1/P2/P3 counts over time (7d/30d/90d selector)
 
 ## Setup
 
@@ -197,6 +215,16 @@ Add these lines:
 
 # Sender (polls for queued replies every 2 min)
 */2 * * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.sender --config config.yaml >> cron/sender.log 2>&1
+
+# Escalation reminders (hourly)
+0 * * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.escalation --config config.yaml >> cron/escalation.log 2>&1
+```
+
+Set up the bot listener as a systemd service:
+```bash
+sudo cp ~/catchup-dashboard/scanner/systemd/catchup-bot.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now catchup-bot
 ```
 
 **Option B: macOS (runs only when laptop is open)**
@@ -238,15 +266,20 @@ The scanner will now fetch your next 7 days of events and use them to boost rela
 
 ### Daily workflow
 
-The scanner runs automatically every 8 hours and sends a Telegram digest. When you want to catch up:
+The scanner runs automatically 3x/day (7am, 1pm, 9pm UTC) and sends a Telegram digest. If a P0 item sits unanswered for 24h, you get a reminder. When you want to catch up:
 
 1. Check the digest in Telegram (from your bot)
 2. Open the dashboard for the full Kanban view
-3. Expand cards to see context + draft replies
-4. Edit the AI draft reply if needed, click **Send reply** -- message is sent as you within 2 min
-5. Or mark items as done / snooze them
+3. Check `/analytics` to see if your inbox is growing or shrinking
+4. Expand cards to see context + draft replies
+5. Edit the AI draft reply if needed, click **Send reply** -- message is sent as you within 2 min
+6. Or mark items as done / snooze them
 
-### Manual scan
+### On-demand scan
+
+Send `/scan` to your bot on Telegram. The bot replies "Starting scan..." and notifies you when done. No need to SSH into the VPS.
+
+### Manual scan (CLI)
 
 ```bash
 cd scanner && python -m src.cli --config config.yaml
@@ -270,6 +303,8 @@ cd scanner && python -m src.cli --config config.yaml
 - **Filters** by source, chat type (DM/group), status (open/done/snoozed)
 - **Search** across chat names, people, and message previews
 - **Mark as done / Snooze** to clear handled items
+- **Auto-refresh** every 30 minutes (visibility-aware, with manual refresh button)
+- **Analytics** at `/analytics` -- line chart of open item counts per priority over time
 - **Mobile responsive** -- usable from phone
 - **Password protected** -- cookie-based auth with 30-day sessions
 
@@ -277,31 +312,42 @@ cd scanner && python -m src.cli --config config.yaml
 
 ```
 catchup-dashboard/
-  scanner/                # Python -- runs locally
+  scanner/                # Python -- runs on VPS
     src/
       cli.py              # CLI entry point
       scanner.py          # Orchestrator (read -> dedup -> classify -> push -> digest)
       sender.py           # Reply sender (polls pending_replies, sends via Telethon)
+      bot_listener.py     # Telegram bot listener (getUpdates polling, /scan command)
+      escalation.py       # Overdue item reminders (P0 >24h, P1 >48h)
       calendar_scanner.py # Google Calendar: fetch events, find related chats
       telegram_reader.py  # Telethon: list dialogs, filter, deep read
-      classifier.py       # Claude API batch classification
+      classifier.py       # Claude API batch classification (with previous context)
       database.py         # Postgres push + dedup queries (asyncpg)
       digest.py           # Telegram digest formatter
-      config.py           # YAML + env config loader
+      config.py           # YAML + env config loader (scan, telegram, classification, escalation)
       models.py           # Pydantic data models
-    tests/                # 38 tests
-    config.yaml           # Scanner configuration + team context
-    cron/                 # launchd plists (macOS) or use crontab (VPS)
+    tests/                # 65 tests
+    config.yaml           # Scanner configuration + team context + escalation thresholds
+    cron/                 # crontab entries (scanner 3x/day, sender 2min, escalation hourly)
+    systemd/              # catchup-bot.service (bot listener)
+    migrations/           # SQL migration files
 
   dashboard/              # Next.js 16 -- deployed on Vercel
     app/
-      page.tsx            # Main page (Server Component)
+      page.tsx            # Main Kanban page (Server Component)
+      analytics/page.tsx  # Inbox health trend chart
       actions.ts          # Server Actions (done/snooze/reopen/sendReply)
       api/login/route.ts  # Login API endpoint
       login/page.tsx      # Login page
-    components/           # Kanban board, cards, filters, search
+    components/
+      kanban-board.tsx    # Kanban grid layout
+      triage-card.tsx     # Expandable item card with draft reply
+      stats-bar.tsx       # Header with stats, auto-refresh, analytics link
+      auto-refresh.tsx    # Client component: 30-min polling + visibility awareness
+      analytics-chart.tsx # Chart.js line chart (P0-P3 over time)
+      filter-bar.tsx      # Source, type, status filters
     lib/
-      db.ts               # Neon Postgres queries (DISTINCT ON for cross-scan dedup)
+      db.ts               # Neon Postgres queries (triage items + analytics)
       types.ts            # Shared TypeScript types
     middleware.ts          # Auth middleware
 
@@ -336,6 +382,10 @@ catchup-dashboard/
 - **Team-aware classification:** Knows your boss (Matthew Graham) and lead dev (efecarranza). If they already responded, priority is lowered automatically.
 - **@mention boosting:** Messages that @mention you or address you by name are boosted to P0/P1.
 - **Calendar cards:** Google Calendar events appear as standalone triage items with auto-priority based on proximity (today=P0, tomorrow=P1, etc.). They also inject context into the classifier so related Telegram chats get boosted.
+- **Priority stability:** When reclassifying a chat, the classifier receives the previous priority, status, and summary. It won't downgrade unless new messages clearly resolve the conversation.
+- **Done item awareness:** If you marked something done and a "thanks" or reaction arrives, the classifier keeps it at P3/MONITORING instead of reopening it.
+- **Escalation anti-spam:** Reminders track `last_reminded_at` per item and only re-remind after a full threshold window (24h for P0, 48h for P1). Uses `FOR UPDATE SKIP LOCKED` to prevent duplicate reminders from concurrent cron runs.
+- **Bot token security:** httpx request logging is suppressed to prevent bot tokens from appearing in systemd journal logs.
 
 ## Roadmap
 
@@ -350,10 +400,15 @@ catchup-dashboard/
 - [x] Team-aware classification (boss + lead dev responses)
 - [x] @mention detection and priority boosting
 - [x] Google Calendar integration (standalone event cards + boosts related chat priority)
+- [x] Smarter dedup (previous classification context, priority stability, done item awareness)
+- [x] Notification escalation (P0 >24h, P1 >48h reminders via bot)
+- [x] On-demand scan via Telegram bot command (/scan)
+- [x] Dashboard auto-refresh (30-min polling, visibility-aware)
+- [x] Analytics (inbox health trend chart, 7d/30d/90d)
 - [ ] Notion source (mentions/tags where your team needs input)
+- [ ] Discord source (DMs/channels with unanswered messages)
 - [ ] GitHub source (issues/PRs assigned or requesting review)
 - [ ] Slack source
-- [ ] Discord source
 
 ## Security
 
