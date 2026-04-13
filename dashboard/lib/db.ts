@@ -164,3 +164,49 @@ export async function getAnalyticsData(days: number = 30): Promise<{
 
   return { labels, datasets };
 }
+
+export async function getInboxHealthData(days: number = 7): Promise<
+  { date: string; count: number }[]
+> {
+  const sql = getDb();
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const rows = await sql`
+    SELECT
+      DATE(user_status_at) as date,
+      COUNT(*) as count
+    FROM triage_items
+    WHERE user_status = 'done'
+      AND user_status_at >= ${cutoff}::timestamptz
+      AND user_status_at IS NOT NULL
+    GROUP BY DATE(user_status_at)
+    ORDER BY date ASC
+  `;
+
+  return rows.map((r) => ({
+    date: r.date as string,
+    count: Number(r.count),
+  }));
+}
+
+export async function getRecentActivity(limit: number = 5): Promise<
+  { chat_name: string; user_status: string; user_status_at: string }[]
+> {
+  const sql = getDb();
+
+  const rows = await sql`
+    SELECT chat_name, user_status, user_status_at
+    FROM triage_items
+    WHERE user_status_at IS NOT NULL
+      AND DATE(user_status_at) = CURRENT_DATE
+      AND user_status != 'open'
+    ORDER BY user_status_at DESC
+    LIMIT ${limit}
+  `;
+
+  return rows.map((r) => ({
+    chat_name: r.chat_name as string,
+    user_status: r.user_status as string,
+    user_status_at: r.user_status_at as string,
+  }));
+}
