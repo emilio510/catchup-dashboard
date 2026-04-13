@@ -1,10 +1,10 @@
 # Catch-up Dashboard
 
-Personal priority tracker that scans your Telegram conversations, classifies them by urgency using AI, and presents them in a Kanban dashboard you can access from anywhere. Automated scans run 3x/day, on-demand via Telegram bot command, with escalation reminders for overdue items.
+Personal priority tracker that scans your communication channels (Telegram, Notion, Google Calendar), classifies messages by urgency using AI, and presents them in a Command Center dashboard you can access from anywhere. Automated scans run 3x/day, on-demand via Telegram bot command, with escalation reminders for overdue items.
 
 **Problem:** You read all your messages but don't always reply. No unread indicator means important conversations fall through the cracks across dozens of active chats.
 
-**Solution:** A scanner reads your Telegram chats, detects who's waiting on a response, classifies priority (P0-P3), and pushes results to a live dashboard with filters, search, draft replies, analytics, and auto-refresh.
+**Solution:** A scanner reads your chats, detects who's waiting on a response, classifies priority (P0-P3), and pushes results to a three-panel Command Center dashboard with conversation-style detail view, context sidebar, filters, search, draft replies, analytics, and auto-refresh.
 
 ## How It Works
 
@@ -27,9 +27,11 @@ Escalation (Python, hourly cron on VPS)
   -> Anti-spam via last_reminded_at tracking
 
 Dashboard (Next.js, deployed on Vercel)
-  Reads from Postgres -> Kanban board (P0/P1/P2/P3)
-  -> Mark done / Snooze / Search / Filter
-  -> Auto-refresh every 30 min + manual refresh button
+  Reads from Postgres -> Command Center (3-panel layout)
+  -> Queue (left): priority-grouped items with source badges
+  -> Detail (center): conversation bubbles, AI context, reply
+  -> Context (right): overdue alerts, sources, health, calendar, scanner, analytics
+  -> Mobile responsive (3-panel / 2-panel / single-column)
   -> /analytics page with inbox health trend chart
   -> Password-protected
 ```
@@ -299,14 +301,15 @@ cd scanner && python -m src.cli --config config.yaml
 
 ### Dashboard features
 
-- **Kanban board** with P0/P1/P2/P3 columns
-- **Expandable cards** with context summary, editable AI-drafted reply, and **Send** button
-- **Filters** by source, chat type (DM/group), status (open/done/snoozed)
-- **Search** across chat names, people, and message previews
-- **Mark as done / Snooze** to clear handled items
+- **Command Center layout** -- three-panel design: queue (left), detail (center), context sidebar (right)
+- **Priority-grouped queue** -- items sorted by P0/P1/P2/P3, lower priorities auto-collapsed, source badges and waiting time inline
+- **Conversation-style detail** -- chat bubbles for their message, left-bordered AI context note, editable reply with **Send via Telegram** button
+- **Context sidebar** -- overdue alerts, source breakdown bar chart, 7-day inbox health heatmap, today's calendar, scanner status with live dot, mini analytics sparkline, recent activity log
+- **Filters** -- status tabs (To respond / Done / Snoozed), source and type dropdown, debounced search
 - **Auto-refresh** every 30 minutes (visibility-aware, with manual refresh button)
-- **Analytics** at `/analytics` -- line chart of open item counts per priority over time
-- **Mobile responsive** -- usable from phone
+- **Analytics** at `/analytics` -- line chart of open item counts per priority over time (7d/30d/90d)
+- **Mobile responsive** -- 3-panel desktop, 2-panel tablet, single-column mobile with back navigation
+- **Navy/slate theme** -- blue-tinted dark theme, easy on the eyes across different times of day
 - **Password protected** -- cookie-based auth with 30-day sessions
 
 ## Architecture
@@ -336,21 +339,41 @@ catchup-dashboard/
 
   dashboard/              # Next.js 16 -- deployed on Vercel
     app/
-      page.tsx            # Main Kanban page (Server Component)
+      page.tsx            # Main page (Server Component, fetches data, renders CommandCenter)
       analytics/page.tsx  # Inbox health trend chart
       actions.ts          # Server Actions (done/snooze/reopen/sendReply)
       api/login/route.ts  # Login API endpoint
       login/page.tsx      # Login page
     components/
-      kanban-board.tsx    # Kanban grid layout
-      triage-card.tsx     # Expandable item card with draft reply
-      stats-bar.tsx       # Header with stats, auto-refresh, analytics link
-      auto-refresh.tsx    # Client component: 30-min polling + visibility awareness
+      command-center/     # Three-panel Command Center layout
+        command-center.tsx  # Root layout with responsive breakpoints
+        queue-panel.tsx     # Left panel: header + priority sections
+        queue-header.tsx    # Title, summary, status tabs, filter, search, auto-refresh
+        queue-section.tsx   # Collapsible priority group
+        queue-item.tsx      # Single item row with source badge + waiting time
+        detail-pane.tsx     # Center panel: empty state or conversation
+        detail-conversation.tsx  # Conversation layout (header, bubbles, reply)
+        message-bubble.tsx  # Chat bubble component (left/right)
+        reply-area.tsx      # Reply textarea + send button + error handling
+        context-sidebar.tsx # Right panel: all sidebar sections
+        overdue-alerts.tsx  # Conditional overdue P0/P1 warning
+        source-breakdown.tsx # Source bar chart
+        inbox-health.tsx    # 7-day clearance heatmap
+        calendar-events.tsx # Today's calendar events
+        scanner-status.tsx  # Scan info with live dot
+        mini-analytics.tsx  # SVG sparkline + link to /analytics
+        recent-activity.tsx # Today's actions log
+      ui/                 # Reusable UI primitives
+        avatar.tsx          # Initials avatar with priority-colored ring
+        source-badge.tsx    # Translucent pill badge for source
+        waiting-badge.tsx   # Waiting time badge (red/amber)
+        priority-dot.tsx    # Small colored dot
+        filter-popover.tsx  # Source/type filter dropdown
       analytics-chart.tsx # Chart.js line chart (P0-P3 over time)
-      filter-bar.tsx      # Source, type, status filters
     lib/
-      db.ts               # Neon Postgres queries (triage items + analytics)
-      types.ts            # Shared TypeScript types
+      db.ts               # Neon Postgres queries (triage items, analytics, inbox health, activity)
+      types.ts            # Shared TypeScript types + priority/source configs
+      theme.ts            # Navy/slate color tokens
     middleware.ts          # Auth middleware
 
   schema.sql              # Postgres schema (scans + triage_items + pending_replies)
@@ -408,6 +431,7 @@ catchup-dashboard/
 - [x] Dashboard auto-refresh (30-min polling, visibility-aware)
 - [x] Analytics (inbox health trend chart, 7d/30d/90d)
 - [x] Notion source (comment @mentions + database assignments, hybrid AI/rule-based classification)
+- [x] UI revamp: Command Center layout (3-panel, conversation-style, navy/slate theme, mobile responsive)
 - [ ] Discord source (DMs/channels with unanswered messages)
 - [ ] GitHub source (issues/PRs assigned or requesting review)
 - [ ] Slack source
