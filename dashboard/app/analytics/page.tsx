@@ -18,24 +18,28 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
   const data = await getAnalyticsData(validDays);
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
-      <div className="flex items-baseline justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-sm text-[#8b949e] hover:text-[#e6edf3] transition-colors">
+    <main style={{ maxWidth: 900, margin: "0 auto", padding: "24px" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <Link href="/" style={{ fontSize: 13, color: "#64748b", textDecoration: "none" }}>
             &larr; Dashboard
           </Link>
-          <h1 className="text-xl font-bold">Inbox Health</h1>
+          <h1 style={{ fontSize: 18, fontWeight: 600 }}>Inbox Health</h1>
         </div>
-        <div className="flex gap-2">
+        <div style={{ display: "flex", gap: 8 }}>
           {[7, 30, 90].map((d) => (
             <Link
               key={d}
               href={`/analytics?days=${d}`}
-              className={`px-3 py-1 text-sm rounded border transition-colors ${
-                d === validDays
-                  ? "border-[#1f6feb] text-[#e6edf3] bg-[#1f6feb]/20"
-                  : "border-[#30363d] text-[#8b949e] hover:border-[#8b949e]"
-              }`}
+              style={{
+                padding: "5px 12px",
+                fontSize: 12,
+                borderRadius: 6,
+                border: d === validDays ? "1px solid #3b82f6" : "1px solid #1e2a4a",
+                color: d === validDays ? "#e2e8f0" : "#64748b",
+                background: d === validDays ? "rgba(59,130,246,0.12)" : "transparent",
+                textDecoration: "none",
+              }}
             >
               {d}d
             </Link>
@@ -44,14 +48,14 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       </div>
 
       {data.labels.length === 0 ? (
-        <p className="text-[#8b949e]">No scan data available for this time range.</p>
+        <p style={{ color: "#64748b" }}>No scan data available for this time range.</p>
       ) : (
-        <div className="bg-[#161b22] rounded-lg p-6 border border-[#30363d]">
+        <div style={{ background: "#141b33", borderRadius: 10, padding: 24, border: "1px solid #1e2a4a" }}>
           <AnalyticsChart labels={data.labels} datasets={data.datasets} />
         </div>
       )}
 
-      <p className="text-xs text-[#8b949e] mt-4">
+      <p style={{ fontSize: 11, color: "#64748b", marginTop: 16 }}>
         Showing open items per priority across {data.labels.length} scans in the last {validDays} days.
       </p>
     </main>

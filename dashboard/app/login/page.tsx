@@ -34,9 +34,33 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#0d1117]">
-      <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-8 w-80">
-        <h1 className="text-lg font-bold text-[#e6edf3] mb-6 text-center">
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#0c0f1a",
+      }}
+    >
+      <div
+        style={{
+          background: "#141b33",
+          border: "1px solid #1e2a4a",
+          borderRadius: 12,
+          padding: 32,
+          width: 320,
+        }}
+      >
+        <h1
+          style={{
+            fontSize: 16,
+            fontWeight: 600,
+            color: "#e2e8f0",
+            marginBottom: 24,
+            textAlign: "center",
+          }}
+        >
           Catch-up Dashboard
         </h1>
         <form onSubmit={handleSubmit}>
@@ -45,17 +69,40 @@ export default function LoginPage() {
             name="password"
             placeholder="Password"
             autoFocus
-            className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3] placeholder-[#8b949e] outline-none focus:border-[#388bfd] mb-4"
+            style={{
+              width: "100%",
+              background: "#0c0f1a",
+              border: "1px solid #1e2a4a",
+              borderRadius: 8,
+              padding: "8px 12px",
+              fontSize: 13,
+              color: "#e2e8f0",
+              outline: "none",
+              marginBottom: 16,
+            }}
           />
           <button
             type="submit"
             disabled={pending}
-            className="w-full bg-[#238636] hover:bg-[#2ea043] text-white text-sm font-medium py-2 rounded disabled:opacity-50"
+            style={{
+              width: "100%",
+              background: "#238636",
+              color: "white",
+              fontSize: 13,
+              fontWeight: 500,
+              padding: "8px 0",
+              borderRadius: 8,
+              border: "none",
+              cursor: "pointer",
+              opacity: pending ? 0.5 : 1,
+            }}
           >
             {pending ? "..." : "Sign in"}
           </button>
           {error && (
-            <p className="text-[#f85149] text-xs mt-3 text-center">{error}</p>
+            <p style={{ color: "#f87171", fontSize: 11, marginTop: 12, textAlign: "center" }}>
+              {error}
+            </p>
           )}
         </form>
       </div>

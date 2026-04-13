@@ -25,10 +25,10 @@ interface AnalyticsChartProps {
 }
 
 const COLORS = {
-  P0: "#f85149",
-  P1: "#d29922",
-  P2: "#3fb950",
-  P3: "#8b949e",
+  P0: "#f87171",
+  P1: "#fbbf24",
+  P2: "#4ade80",
+  P3: "#94a3b8",
 };
 
 export function AnalyticsChart({ labels, datasets }: AnalyticsChartProps) {
@@ -77,7 +77,7 @@ export function AnalyticsChart({ labels, datasets }: AnalyticsChartProps) {
       legend: {
         position: "top" as const,
         labels: {
-          color: "#e6edf3",
+          color: "#e2e8f0",
           usePointStyle: true,
         },
       },
@@ -88,13 +88,13 @@ export function AnalyticsChart({ labels, datasets }: AnalyticsChartProps) {
     },
     scales: {
       x: {
-        ticks: { color: "#8b949e", maxTicksLimit: 12 },
-        grid: { color: "#21262d" },
+        ticks: { color: "#64748b", maxTicksLimit: 12 },
+        grid: { color: "#162038" },
       },
       y: {
         beginAtZero: true,
-        ticks: { color: "#8b949e", stepSize: 1 },
-        grid: { color: "#21262d" },
+        ticks: { color: "#64748b", stepSize: 1 },
+        grid: { color: "#162038" },
       },
     },
   };
