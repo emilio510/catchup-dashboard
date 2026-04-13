@@ -1,3 +1,5 @@
+"use client";
+
 interface InboxHealthProps {
   data: { date: string; count: number }[];
 }

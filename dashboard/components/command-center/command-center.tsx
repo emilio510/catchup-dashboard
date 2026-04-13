@@ -35,9 +35,16 @@ export function CommandCenter({
   analyticsData,
   recentActivity,
 }: CommandCenterProps) {
-  const [selectedItem, setSelectedItem] = useState<TriageItem | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const allItems = [...items.P0, ...items.P1, ...items.P2, ...items.P3];
+  const selectedItem = selectedId
+    ? allItems.find((i) => i.id === selectedId) ?? null
+    : null;
+
+  function handleSelectItem(item: TriageItem) {
+    setSelectedId(item.id);
+  }
   const byPriority = {
     P0: items.P0.length,
     P1: items.P1.length,
@@ -57,8 +64,8 @@ export function CommandCenter({
       <QueuePanel
         items={items}
         total={total}
-        selectedId={selectedItem?.id ?? null}
-        onSelectItem={setSelectedItem}
+        selectedId={selectedId}
+        onSelectItem={handleSelectItem}
         currentStatus={currentStatus}
         currentSource={currentSource}
         currentChatType={currentChatType}
@@ -69,7 +76,7 @@ export function CommandCenter({
       </div>
       <ContextSidebar
         allItems={allItems}
-        onSelectItem={setSelectedItem}
+        onSelectItem={handleSelectItem}
         scannedAt={scannedAt}
         dialogsListed={dialogsListed}
         dialogsClassified={dialogsClassified}

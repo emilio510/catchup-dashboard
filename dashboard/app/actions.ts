@@ -34,6 +34,9 @@ export async function sendReply(itemId: string, messageText: string): Promise<vo
   if (!messageText.trim()) {
     throw new Error("Message cannot be empty");
   }
+  if (messageText.length > 4096) {
+    throw new Error("Message too long (max 4096 characters)");
+  }
   await queueReplyAndMarkDone(itemId, messageText);
   revalidatePath("/");
 }

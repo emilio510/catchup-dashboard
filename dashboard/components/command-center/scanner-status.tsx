@@ -1,3 +1,5 @@
+"use client";
+
 interface ScannerStatusProps {
   scannedAt: string;
   dialogsListed: number;

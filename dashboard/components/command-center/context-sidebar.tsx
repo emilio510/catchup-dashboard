@@ -1,3 +1,5 @@
+"use client";
+
 import { OverdueAlerts } from "./overdue-alerts";
 import { SourceBreakdown } from "./source-breakdown";
 import { InboxHealth } from "./inbox-health";

@@ -150,7 +150,7 @@ export function DetailConversation({ item }: DetailConversationProps) {
         </div>
       )}
 
-      <ReplyArea item={item} />
+      <ReplyArea key={item.id} item={item} />
     </div>
   );
 }

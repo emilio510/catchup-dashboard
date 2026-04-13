@@ -38,5 +38,5 @@ export function DetailPane({ item, byPriority, total }: DetailPaneProps) {
     );
   }
 
-  return <DetailConversation item={item} />;
+  return <DetailConversation key={item.id} item={item} />;
 }
