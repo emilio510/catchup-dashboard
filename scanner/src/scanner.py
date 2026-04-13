@@ -93,7 +93,10 @@ class Scanner:
                     if prev is None:
                         to_classify.append(conv)
                     else:
-                        last_msg = conv.messages[-1].date if conv.messages else None
+                        # Use dialog.last_message_date (from iter_dialogs) -- this is
+                        # always the actual latest message, unlike conv.messages[-1].date
+                        # which is limited by messages_per_chat and may be days old.
+                        last_msg = conv.dialog.last_message_date
                         if should_reclassify(last_msg, prev["scanned_at"], prev["user_status"]):
                             to_classify.append(conv)
                             prev_context_by_name[conv.dialog.name] = {

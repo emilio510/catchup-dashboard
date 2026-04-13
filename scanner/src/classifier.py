@@ -112,6 +112,7 @@ def parse_classification_response(
     chat_type: str,
     chat_id: int,
     last_message_id: int,
+    last_message_at: datetime | None = None,
 ) -> list[TriageItem]:
     try:
         data = json.loads(response_text)
@@ -154,7 +155,7 @@ def parse_classification_response(
                 priority=entry.get("priority", "P2"),
                 status=entry.get("status", "READ_NO_REPLY"),
                 tags=entry.get("tags", []),
-                last_message_at=datetime.now(timezone.utc),
+                last_message_at=last_message_at or datetime.now(timezone.utc),
                 waiting_since=waiting_since,
                 waiting_days=entry.get("waiting_days"),
                 chat_id=chat_id,
@@ -249,6 +250,14 @@ class Classifier:
                 chat_type = conv.chat_type if conv else "dm"
                 last_msg_id = conv.messages[-1].message_id if conv and conv.messages else 0
 
+                # Use the actual latest message date from the dialog listing,
+                # not datetime.now() which breaks dedup comparisons.
+                last_msg_at = (
+                    conv.dialog.last_message_date
+                    if conv and conv.dialog.last_message_date
+                    else datetime.now(timezone.utc)
+                )
+
                 waiting_since = None
                 if entry.get("waiting_since"):
                     try:
@@ -269,7 +278,7 @@ class Classifier:
                     priority=entry.get("priority", "P2"),
                     status=entry.get("status", "READ_NO_REPLY"),
                     tags=entry.get("tags", []),
-                    last_message_at=datetime.now(timezone.utc),
+                    last_message_at=last_msg_at,
                     waiting_since=waiting_since,
                     waiting_days=entry.get("waiting_days"),
                     chat_id=chat_id,

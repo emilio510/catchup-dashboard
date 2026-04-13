@@ -374,7 +374,7 @@ catchup-dashboard/
 ### Key design decisions
 
 - **No unread-based filtering:** The scanner detects who's waiting by analyzing message content, not read status. This works even if you read everything and clear notifications.
-- **Deduplication:** Only chats with new messages since the last scan are reclassified. Items you marked "done" stay done unless new messages arrive.
+- **Deduplication:** Only chats with new messages since the last scan are reclassified. Items you marked "done" stay done unless new messages arrive. The dedup comparison uses the dialog's latest message timestamp (from Telegram's dialog listing), not the deep-read message list which is capped by `messages_per_chat`.
 - **Cross-scan queries:** The dashboard shows the most recent item per chat across all scans, not just the latest scan. This means items from previous scans persist correctly.
 - **Batch classification:** Chats are sent to Claude in batches of 5 for cost efficiency (~$0.02-0.05 per scan).
 - **Retry with backoff:** API overload errors are retried (3 attempts, exponential backoff, inter-batch delay).
