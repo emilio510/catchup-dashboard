@@ -14,6 +14,7 @@ export function ReplyArea({ item }: ReplyAreaProps) {
   const [editing, setEditing] = useState(!item.draft_reply);
   const [replyText, setReplyText] = useState(item.draft_reply ?? "");
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -21,10 +22,15 @@ export function ReplyArea({ item }: ReplyAreaProps) {
 
   function handleSend() {
     if (!replyText.trim() || !item.chat_id) return;
+    setError(null);
     startTransition(async () => {
-      await sendReply(item.id, replyText);
-      setSent(true);
-      router.refresh();
+      try {
+        await sendReply(item.id, replyText);
+        setSent(true);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to send reply");
+      }
     });
   }
 
@@ -45,6 +51,20 @@ export function ReplyArea({ item }: ReplyAreaProps) {
       </div>
     );
   }
+
+  const errorBanner = error ? (
+    <div
+      style={{
+        background: "rgba(248,113,113,0.08)",
+        border: "1px solid rgba(248,113,113,0.2)",
+        borderRadius: 10,
+        padding: "10px 14px",
+        marginTop: 8,
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#f87171" }}>{error}</div>
+    </div>
+  ) : null;
 
   if (!editing && item.draft_reply) {
     return (
@@ -84,6 +104,7 @@ export function ReplyArea({ item }: ReplyAreaProps) {
             </button>
           </div>
         )}
+        {errorBanner}
       </div>
     );
   }
@@ -104,6 +125,7 @@ export function ReplyArea({ item }: ReplyAreaProps) {
       <textarea
         value={replyText}
         onChange={(e) => setReplyText(e.target.value)}
+        maxLength={4096}
         placeholder="Type your reply..."
         style={{
           width: "100%",
@@ -153,6 +175,7 @@ export function ReplyArea({ item }: ReplyAreaProps) {
           </button>
         )}
       </div>
+      {errorBanner}
     </div>
   );
 }

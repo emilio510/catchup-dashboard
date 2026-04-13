@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markItemDone, snoozeItem } from "@/app/actions";
 import { Avatar } from "@/components/ui/avatar";
@@ -28,6 +28,7 @@ function relativeTime(dateStr: string | null): string {
 
 export function DetailConversation({ item }: DetailConversationProps) {
   const [isPending, startTransition] = useTransition();
+  const [actionError, setActionError] = useState<string | null>(null);
   const router = useRouter();
   const priorityConfig = PRIORITY_CONFIG[item.priority as Priority];
   const waitText =
@@ -38,9 +39,14 @@ export function DetailConversation({ item }: DetailConversationProps) {
       : null;
 
   function handleAction(action: (id: string) => Promise<void>) {
+    setActionError(null);
     startTransition(async () => {
-      await action(item.id);
-      router.refresh();
+      try {
+        await action(item.id);
+        router.refresh();
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Action failed");
+      }
     });
   }
 
@@ -147,6 +153,20 @@ export function DetailConversation({ item }: DetailConversationProps) {
           <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.5 }}>
             {item.context_summary}
           </div>
+        </div>
+      )}
+
+      {actionError && (
+        <div
+          style={{
+            background: "rgba(248,113,113,0.08)",
+            border: "1px solid rgba(248,113,113,0.2)",
+            borderRadius: 10,
+            padding: "10px 14px",
+            marginBottom: 14,
+          }}
+        >
+          <div style={{ fontSize: 12, color: "#f87171" }}>{actionError}</div>
         </div>
       )}
 
