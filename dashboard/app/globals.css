@@ -4,3 +4,8 @@ body {
   background-color: #0c0f1a;
   color: #e2e8f0;
 }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
