@@ -42,16 +42,16 @@ export interface ScanInfo {
   };
 }
 
-export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; dotColor: string }> = {
-  P0: { label: "Respond Today", color: "#f85149", dotColor: "bg-red-500" },
-  P1: { label: "This Week", color: "#d29922", dotColor: "bg-amber-500" },
-  P2: { label: "Respond", color: "#3fb950", dotColor: "bg-green-500" },
-  P3: { label: "Monitor", color: "#8b949e", dotColor: "bg-gray-500" },
+export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string }> = {
+  P0: { label: "Respond Today", color: "#f87171" },
+  P1: { label: "This Week", color: "#fbbf24" },
+  P2: { label: "Respond", color: "#4ade80" },
+  P3: { label: "Monitor", color: "#94a3b8" },
 };
 
-export const SOURCE_CONFIG: Record<Source, { label: string; color: string; bgColor: string }> = {
-  telegram: { label: "TG", color: "#1f6feb", bgColor: "bg-blue-500/20 border-blue-500" },
-  notion: { label: "Notion", color: "#7c3aed", bgColor: "bg-purple-500/20 border-purple-500" },
-  github: { label: "GH", color: "#e6edf3", bgColor: "bg-gray-500/20 border-gray-500" },
-  calendar: { label: "Cal", color: "#3fb950", bgColor: "bg-green-500/20 border-green-500" },
+export const SOURCE_CONFIG: Record<Source, { label: string; color: string }> = {
+  telegram: { label: "TG", color: "#2AABEE" },
+  notion: { label: "Notion", color: "#7c3aed" },
+  github: { label: "GH", color: "#e2e8f0" },
+  calendar: { label: "Cal", color: "#4ade80" },
 };

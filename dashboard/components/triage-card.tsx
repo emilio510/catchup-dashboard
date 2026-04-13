@@ -28,7 +28,10 @@ export function TriageCard({ item }: TriageCardProps) {
           <p className="text-[#8b949e] mb-2 line-clamp-2">{item.preview}</p>
         )}
         <div className="flex gap-1 flex-wrap">
-          <span className={`px-1.5 py-0.5 rounded text-[10px] border ${sourceConfig.bgColor}`}>
+          <span
+            className="px-1.5 py-0.5 rounded text-[10px] border"
+            style={{ borderColor: sourceConfig.color, color: sourceConfig.color }}
+          >
             {sourceConfig.label}
           </span>
           {item.chat_type === "dm" && (
