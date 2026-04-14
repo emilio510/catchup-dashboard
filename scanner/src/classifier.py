@@ -201,7 +201,7 @@ class Classifier:
                     messages=[{"role": "user", "content": prompt}],
                 )
                 break
-            except (anthropic.OverloadedError, anthropic.RateLimitError) as exc:
+            except (anthropic.InternalServerError, anthropic.RateLimitError) as exc:
                 if attempt == max_retries - 1:
                     logger.error("API failed after %d retries: %s", max_retries, exc)
                     return []
