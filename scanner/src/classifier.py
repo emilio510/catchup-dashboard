@@ -233,6 +233,8 @@ class Classifier:
             calendar_context=self.calendar_context,
             previous_context=previous_context,
             notion_context=self.notion_context,
+            user_aliases=self._config.classification.user_aliases,
+            topics_owned=self._config.classification.topics_owned,
         )
 
         response = None
