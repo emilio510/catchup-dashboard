@@ -30,6 +30,7 @@ class ChatMessage:
     date: datetime
     message_id: int
     is_me: bool
+    reply_to_message_id: int | None = None
 
     def format(self) -> str:
         tag = " (me)" if self.is_me else ""

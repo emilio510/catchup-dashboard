@@ -90,3 +90,28 @@ def test_chat_message_format():
     formatted = msg.format()
     assert "Marc" in formatted
     assert "vault params" in formatted
+
+
+def test_chat_message_carries_reply_to_message_id():
+    msg_with_reply = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="yeah I agree",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=42,
+        is_me=False,
+        reply_to_message_id=39,
+    )
+    assert msg_with_reply.reply_to_message_id == 39
+
+
+def test_chat_message_reply_to_defaults_to_none():
+    msg = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="hello",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=1,
+        is_me=False,
+    )
+    assert msg.reply_to_message_id is None
