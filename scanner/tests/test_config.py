@@ -205,3 +205,21 @@ notion:
         assert config.notion.token == "ntn_test_token_123"
     finally:
         del os.environ["NOTION_TOKEN"]
+
+
+def test_classification_config_accepts_aliases_and_topics():
+    from src.config import ClassificationConfig
+    config = ClassificationConfig(
+        api_key="dummy",
+        user_aliases=["Emile", "Em", "@AkgEmilio"],
+        topics_owned=["Aave", "GHO"],
+    )
+    assert config.user_aliases == ["Emile", "Em", "@AkgEmilio"]
+    assert config.topics_owned == ["Aave", "GHO"]
+
+
+def test_classification_config_aliases_default_empty():
+    from src.config import ClassificationConfig
+    config = ClassificationConfig(api_key="dummy")
+    assert config.user_aliases == []
+    assert config.topics_owned == []
