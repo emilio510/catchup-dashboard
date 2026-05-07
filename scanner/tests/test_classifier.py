@@ -217,3 +217,70 @@ def test_anchor_uses_most_recent_me_message_when_multiple():
     assert second_take_idx < anchor_idx < follow_up_idx
     # Anchor must NOT appear after the first me message — only after the last
     assert body.count(ANCHOR) == 1
+
+
+def test_prompt_renders_reply_to_user_marker():
+    me_msg = ChatMessage(
+        sender_name="Emile", sender_id=100,
+        text="should we ship the vault?",
+        date=datetime(2026, 5, 7, 14, 0, tzinfo=timezone.utc),
+        message_id=10, is_me=True,
+    )
+    reply_msg = ChatMessage(
+        sender_name="Bob", sender_id=200,
+        text="yes lgtm",
+        date=datetime(2026, 5, 7, 14, 5, tzinfo=timezone.utc),
+        message_id=11, is_me=False,
+        reply_to_message_id=10,
+    )
+    conv = ConversationData(
+        dialog=DialogInfo(chat_id=1, name="Group", is_channel=False, is_bot=False,
+                          last_message_sender_is_me=False, last_message_date=reply_msg.date),
+        messages=[me_msg, reply_msg],
+        chat_type="group",
+    )
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    assert '(↩ to YOU: "should we ship the vault?")' in prompt
+
+
+def test_prompt_renders_reply_to_other_marker():
+    alice_msg = ChatMessage(
+        sender_name="Alice", sender_id=300,
+        text="what's the timeline?",
+        date=datetime(2026, 5, 7, 14, 0, tzinfo=timezone.utc),
+        message_id=20, is_me=False,
+    )
+    bob_reply = ChatMessage(
+        sender_name="Bob", sender_id=200,
+        text="end of week",
+        date=datetime(2026, 5, 7, 14, 5, tzinfo=timezone.utc),
+        message_id=21, is_me=False,
+        reply_to_message_id=20,
+    )
+    conv = ConversationData(
+        dialog=DialogInfo(chat_id=1, name="Group", is_channel=False, is_bot=False,
+                          last_message_sender_is_me=False, last_message_date=bob_reply.date),
+        messages=[alice_msg, bob_reply],
+        chat_type="group",
+    )
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    assert '(↩ to "what\'s the timeline?")' in prompt
+    assert "↩ to YOU" not in prompt
+
+
+def test_prompt_renders_reply_outside_window_when_target_missing():
+    bob_reply = ChatMessage(
+        sender_name="Bob", sender_id=200,
+        text="agreed",
+        date=datetime(2026, 5, 7, 14, 5, tzinfo=timezone.utc),
+        message_id=21, is_me=False,
+        reply_to_message_id=999,  # not in conversation
+    )
+    conv = ConversationData(
+        dialog=DialogInfo(chat_id=1, name="Group", is_channel=False, is_bot=False,
+                          last_message_sender_is_me=False, last_message_date=bob_reply.date),
+        messages=[bob_reply],
+        chat_type="group",
+    )
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    assert '(↩ to "msg outside window")' in prompt

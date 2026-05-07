@@ -117,8 +117,20 @@ def build_classification_prompt(
             if msg.is_me:
                 last_me_index = i
 
+        msg_by_id = {m.message_id: m for m in conv.messages}
+
         for i, msg in enumerate(conv.messages):
-            parts.append(msg.format())
+            replied_text: str | None = None
+            replied_is_me = False
+            if msg.reply_to_message_id is not None:
+                target = msg_by_id.get(msg.reply_to_message_id)
+                if target is not None:
+                    replied_text = target.text
+                    replied_is_me = target.is_me
+                else:
+                    replied_text = "msg outside window"
+                    replied_is_me = False
+            parts.append(msg.format(replied_text=replied_text, replied_is_me=replied_is_me))
             if i == last_me_index and last_me_index >= 0:
                 parts.append("--- YOUR LAST MESSAGE ABOVE ---")
         parts.append("")
