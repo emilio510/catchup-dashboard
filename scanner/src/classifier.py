@@ -297,6 +297,19 @@ class Classifier:
                 chat_type = conv.chat_type if conv else "dm"
                 last_msg_id = conv.messages[-1].message_id if conv and conv.messages else 0
 
+                # Belt-and-suspenders enforcement: in group chats, if the model
+                # says the user wasn't addressed, force the result to P3/MONITORING
+                # regardless of what priority the model returned.
+                if chat_type == "group" and not entry.get("addressed_to_user", False):
+                    logger.info(
+                        "Forcing P3/MONITORING for unaddressed group chat %r (model said priority=%s, address_reason=%s)",
+                        chat_name,
+                        entry.get("priority"),
+                        entry.get("address_reason"),
+                    )
+                    entry["priority"] = "P3"
+                    entry["status"] = "MONITORING"
+
                 # Use the actual latest message date from the dialog listing,
                 # not datetime.now() which breaks dedup comparisons.
                 last_msg_at = (

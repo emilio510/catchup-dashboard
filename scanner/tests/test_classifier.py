@@ -1,6 +1,9 @@
 import json
+import pytest
 from datetime import datetime, timezone
-from src.classifier import build_classification_prompt, parse_classification_response, SYSTEM_PROMPT
+from unittest.mock import AsyncMock, MagicMock
+from src.classifier import build_classification_prompt, parse_classification_response, SYSTEM_PROMPT, Classifier
+from src.config import ScannerConfig, ClassificationConfig, TelegramConfig
 from src.telegram_reader import DialogInfo, ChatMessage, ConversationData
 
 
@@ -305,3 +308,126 @@ def test_system_prompt_uses_lower_priority_default():
 def test_system_prompt_requires_addressed_to_user_field():
     assert "addressed_to_user" in SYSTEM_PROMPT
     assert "address_reason" in SYSTEM_PROMPT
+
+
+def test_classifier_wires_config_aliases_and_topics_to_prompt():
+    """Verify that Classifier passes config aliases/topics to build_classification_prompt."""
+    from src.config import ScannerConfig, ClassificationConfig, ScanConfig, TelegramConfig, OutputConfig, CalendarConfig, EscalationConfig, NotionConfig
+
+    config = ScannerConfig(
+        scan=ScanConfig(),
+        telegram=TelegramConfig(api_id=123, api_hash="test"),
+        classification=ClassificationConfig(
+            api_key="test-key",
+            user_context="Test context",
+            user_aliases=["Emile", "@AkgEmilio"],
+            topics_owned=["Aave", "GHO"],
+        ),
+        output=OutputConfig(),
+        calendar=CalendarConfig(),
+        escalation=EscalationConfig(),
+        notion=NotionConfig(),
+    )
+
+    conv = make_conversation("Test", [("Alice", "hi", False)])
+    prompt = build_classification_prompt(
+        [conv],
+        "akgemilio",
+        config.classification.user_context,
+        user_aliases=config.classification.user_aliases,
+        topics_owned=config.classification.topics_owned,
+    )
+
+    # Verify aliases and topics are included in the prompt
+    assert "User aliases" in prompt
+    assert "Emile" in prompt
+    assert "@AkgEmilio" in prompt
+    assert "Topics the user owns" in prompt
+    assert "Aave" in prompt
+    assert "GHO" in prompt
+
+
+# ---------------------------------------------------------------------------
+# Task 9: belt-and-suspenders enforcement tests
+# ---------------------------------------------------------------------------
+
+def _make_classifier_with_response(response_json: str) -> Classifier:
+    config = ScannerConfig(
+        classification=ClassificationConfig(api_key="dummy"),
+        telegram=TelegramConfig(api_id=1, api_hash="x"),
+    )
+    classifier = Classifier(config)
+
+    fake_response = MagicMock()
+    fake_response.content = [MagicMock(type="text", text=response_json)]
+    fake_response.stop_reason = "end_turn"
+
+    classifier._client = MagicMock()
+    classifier._client.messages = MagicMock()
+    classifier._client.messages.create = AsyncMock(return_value=fake_response)
+    return classifier
+
+
+@pytest.mark.asyncio
+async def test_enforcement_forces_p3_for_unaddressed_group():
+    response = json.dumps([
+        {
+            "chat_name": "Big Group",
+            "addressed_to_user": False,
+            "address_reason": "not_addressed",
+            "priority": "P0",  # model slipped -- should be overridden
+            "status": "READ_NO_REPLY",
+            "preview": "...",
+        }
+    ])
+    classifier = _make_classifier_with_response(response)
+    conv = make_conversation("Big Group", [("Bob", "ambient chatter", False)])
+    items = await classifier.classify_batch([conv], "akgemilio")
+    assert len(items) == 1
+    assert items[0].priority == "P3"
+    assert items[0].status == "MONITORING"
+
+
+@pytest.mark.asyncio
+async def test_enforcement_does_not_override_dm_priority():
+    response = json.dumps([
+        {
+            "chat_name": "Alice DM",
+            "addressed_to_user": False,
+            "address_reason": "not_addressed",
+            "priority": "P1",
+            "status": "READ_NO_REPLY",
+            "preview": "...",
+        }
+    ])
+    classifier = _make_classifier_with_response(response)
+    dm_conv = ConversationData(
+        dialog=DialogInfo(chat_id=42, name="Alice DM", is_channel=False, is_bot=False,
+                          last_message_sender_is_me=False,
+                          last_message_date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc)),
+        messages=[ChatMessage(sender_name="Alice", sender_id=200, text="hey",
+                              date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+                              message_id=1, is_me=False)],
+        chat_type="dm",
+    )
+    items = await classifier.classify_batch([dm_conv], "akgemilio")
+    assert items[0].priority == "P1"  # NOT overridden
+    assert items[0].status == "READ_NO_REPLY"
+
+
+@pytest.mark.asyncio
+async def test_enforcement_does_not_override_addressed_group():
+    response = json.dumps([
+        {
+            "chat_name": "Logic Protocol Core",
+            "addressed_to_user": True,
+            "address_reason": "alias_mention",
+            "priority": "P1",
+            "status": "READ_NO_REPLY",
+            "preview": "...",
+        }
+    ])
+    classifier = _make_classifier_with_response(response)
+    conv = make_conversation("Logic Protocol Core", [("Marc", "Emile, can you look?", False)])
+    items = await classifier.classify_batch([conv], "akgemilio")
+    assert items[0].priority == "P1"  # NOT overridden -- addressed=True
