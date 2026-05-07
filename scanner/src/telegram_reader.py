@@ -169,6 +169,10 @@ class TelegramReader:
                 elif isinstance(msg.sender, (Chat, Channel)):
                     sender_name = msg.sender.title or str(sender_id)
 
+            reply_to_id = None
+            if msg.reply_to is not None:
+                reply_to_id = getattr(msg.reply_to, "reply_to_msg_id", None)
+
             messages.append(
                 ChatMessage(
                     sender_name=sender_name,
@@ -177,6 +181,7 @@ class TelegramReader:
                     date=msg.date,
                     message_id=msg.id,
                     is_me=sender_id == self._me_id,
+                    reply_to_message_id=reply_to_id,
                 )
             )
 
