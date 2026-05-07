@@ -112,8 +112,15 @@ def build_classification_prompt(
                 parts.append(f"  - Previous preview: \"{prev['preview']}\"")
             parts.append("")
 
-        for msg in conv.messages:
+        last_me_index = -1
+        for i, msg in enumerate(conv.messages):
+            if msg.is_me:
+                last_me_index = i
+
+        for i, msg in enumerate(conv.messages):
             parts.append(msg.format())
+            if i == last_me_index and last_me_index >= 0:
+                parts.append("--- YOUR LAST MESSAGE ABOVE ---")
         parts.append("")
 
     return "\n".join(parts)

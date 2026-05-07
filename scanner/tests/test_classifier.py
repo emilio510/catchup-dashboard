@@ -172,3 +172,48 @@ def test_build_prompt_omits_topics_section_when_empty():
         [conv], "akgemilio", "I work at TokenLogic.",
     )
     assert "Topics the user owns" not in prompt
+
+
+ANCHOR = "--- YOUR LAST MESSAGE ABOVE ---"
+
+
+def test_anchor_inserted_after_last_me_message():
+    conv = make_conversation("Group", [
+        ("Bob", "starting topic", False),
+        ("Alice", "more context", False),
+        ("Emile", "my take", True),
+        ("Bob", "any thoughts on this?", False),
+    ])
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    body = prompt.split("--- CHAT:")[1]
+    assert ANCHOR in body
+    me_idx = body.index("my take")
+    anchor_idx = body.index(ANCHOR)
+    later_idx = body.index("any thoughts on this?")
+    assert me_idx < anchor_idx < later_idx
+
+
+def test_anchor_omitted_when_no_me_message():
+    conv = make_conversation("Group", [
+        ("Bob", "starting topic", False),
+        ("Alice", "more context", False),
+    ])
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    assert ANCHOR not in prompt
+
+
+def test_anchor_uses_most_recent_me_message_when_multiple():
+    conv = make_conversation("Group", [
+        ("Emile", "first take", True),
+        ("Bob", "reply", False),
+        ("Emile", "second take", True),
+        ("Alice", "follow-up question", False),
+    ])
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    body = prompt.split("--- CHAT:")[1]
+    second_take_idx = body.index("second take")
+    anchor_idx = body.index(ANCHOR)
+    follow_up_idx = body.index("follow-up question")
+    assert second_take_idx < anchor_idx < follow_up_idx
+    # Anchor must NOT appear after the first me message — only after the last
+    assert body.count(ANCHOR) == 1
