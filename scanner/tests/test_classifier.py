@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timezone
-from src.classifier import build_classification_prompt, parse_classification_response
+from src.classifier import build_classification_prompt, parse_classification_response, SYSTEM_PROMPT
 from src.telegram_reader import DialogInfo, ChatMessage, ConversationData
 
 
@@ -284,3 +284,24 @@ def test_prompt_renders_reply_outside_window_when_target_missing():
     )
     prompt = build_classification_prompt([conv], "akgemilio", "")
     assert '(↩ to "msg outside window")' in prompt
+
+
+def test_system_prompt_has_two_step_decision():
+    assert "DECIDE IN THIS ORDER" in SYSTEM_PROMPT
+    assert "Is the user being addressed" in SYSTEM_PROMPT
+
+
+def test_system_prompt_has_strict_group_default():
+    assert "GROUP CHATS" in SYSTEM_PROMPT
+    assert "STRICT DEFAULT" in SYSTEM_PROMPT
+    assert "addressed_to_user=false" in SYSTEM_PROMPT
+
+
+def test_system_prompt_uses_lower_priority_default():
+    assert "CHOOSE THE LOWER PRIORITY" in SYSTEM_PROMPT
+    assert "ALWAYS choose the HIGHER" not in SYSTEM_PROMPT
+
+
+def test_system_prompt_requires_addressed_to_user_field():
+    assert "addressed_to_user" in SYSTEM_PROMPT
+    assert "address_reason" in SYSTEM_PROMPT
