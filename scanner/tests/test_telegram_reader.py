@@ -223,3 +223,39 @@ async def test_deep_read_captures_reply_to_message_id():
     assert len(conv.messages) == 2
     assert conv.messages[0].reply_to_message_id is None
     assert conv.messages[1].reply_to_message_id == 1
+
+
+@pytest.mark.asyncio
+async def test_deep_read_handles_reply_to_without_msg_id_attr():
+    """Telethon's MessageReplyStoryHeader has no reply_to_msg_id; getattr fallback to None."""
+    config = make_config()
+    reader = TelegramReader(config)
+    reader._me_id = 100
+
+    # Fake a Telethon message whose reply_to lacks reply_to_msg_id entirely
+    msg_without_attr = MagicMock()
+    msg_without_attr.id = 5
+    msg_without_attr.text = "story reply"
+    msg_without_attr.sender = None
+    msg_without_attr.sender_id = 200
+    msg_without_attr.date = datetime(2026, 5, 7, 12, 5, tzinfo=timezone.utc)
+    msg_without_attr.reply_to = SimpleNamespace()  # no reply_to_msg_id attribute
+
+    async def fake_iter_messages(*args, **kwargs):
+        yield msg_without_attr
+
+    fake_client = MagicMock()
+    fake_client.iter_messages = fake_iter_messages
+    fake_client.get_entity = AsyncMock(return_value=SimpleNamespace())
+    reader._client = fake_client
+
+    dialog = DialogInfo(
+        chat_id=1, name="Test", is_channel=False, is_bot=False,
+        last_message_sender_is_me=False,
+        last_message_date=datetime(2026, 5, 7, 12, 5, tzinfo=timezone.utc),
+    )
+
+    conv = await reader.deep_read(dialog)
+
+    assert len(conv.messages) == 1
+    assert conv.messages[0].reply_to_message_id is None  # getattr fallback worked
