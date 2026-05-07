@@ -4,9 +4,7 @@
 #
 # Update paths if your install directory differs from ~/catchup-dashboard
 
-# Scanner at 7am, 1pm, 9pm UTC (3x/day)
-0 7 * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml >> cron/scan.log 2>&1
-0 13 * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml >> cron/scan.log 2>&1
+# Scanner once daily at 21:00 UTC (23:00 Paris)
 0 21 * * * cd ~/catchup-dashboard/scanner && .venv/bin/python -m src.cli --config config.yaml >> cron/scan.log 2>&1
 
 # Sender: polls pending_replies every 2 min, sends queued messages via Telethon
