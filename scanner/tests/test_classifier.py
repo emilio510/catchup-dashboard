@@ -134,3 +134,41 @@ def test_build_prompt_without_previous_context():
     ])
     prompt = build_classification_prompt([conv], "akgemilio", "I work at TokenLogic.")
     assert "Previous classification" not in prompt
+
+
+def test_build_prompt_includes_aliases_when_provided():
+    conv = make_conversation("Test", [("Alice", "hi", False)])
+    prompt = build_classification_prompt(
+        [conv], "akgemilio", "I work at TokenLogic.",
+        user_aliases=["Emile", "Em", "@AkgEmilio"],
+    )
+    assert "User aliases" in prompt
+    assert "Emile" in prompt
+    assert "@AkgEmilio" in prompt
+
+
+def test_build_prompt_includes_topics_when_provided():
+    conv = make_conversation("Test", [("Alice", "hi", False)])
+    prompt = build_classification_prompt(
+        [conv], "akgemilio", "I work at TokenLogic.",
+        topics_owned=["Aave", "GHO", "USDT0"],
+    )
+    assert "Topics the user owns" in prompt
+    assert "Aave" in prompt
+    assert "USDT0" in prompt
+
+
+def test_build_prompt_omits_aliases_section_when_empty():
+    conv = make_conversation("Test", [("Alice", "hi", False)])
+    prompt = build_classification_prompt(
+        [conv], "akgemilio", "I work at TokenLogic.",
+    )
+    assert "User aliases" not in prompt
+
+
+def test_build_prompt_omits_topics_section_when_empty():
+    conv = make_conversation("Test", [("Alice", "hi", False)])
+    prompt = build_classification_prompt(
+        [conv], "akgemilio", "I work at TokenLogic.",
+    )
+    assert "Topics the user owns" not in prompt

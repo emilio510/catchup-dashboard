@@ -60,6 +60,8 @@ def build_classification_prompt(
     calendar_context: str = "",
     previous_context: dict[str, dict] | None = None,
     notion_context: str = "",
+    user_aliases: list[str] | None = None,
+    topics_owned: list[str] | None = None,
 ) -> str:
     parts = [
         f"User context: {user_context}",
@@ -67,6 +69,18 @@ def build_classification_prompt(
         f"Current time: {datetime.now(timezone.utc).isoformat()}",
         "",
     ]
+
+    if user_aliases:
+        parts.append("User aliases (any case-insensitive substring match counts as a mention):")
+        for alias in user_aliases:
+            parts.append(f"  - {alias}")
+        parts.append("")
+
+    if topics_owned:
+        parts.append("Topics the user owns (decisions/actions on these topics likely require the user):")
+        for topic in topics_owned:
+            parts.append(f"  - {topic}")
+        parts.append("")
 
     if calendar_context:
         parts.append(calendar_context)
@@ -86,7 +100,6 @@ def build_classification_prompt(
     for conv in conversations:
         parts.append(f"--- CHAT: {conv.dialog.name} (type: {conv.chat_type}) ---")
 
-        # Inject previous classification context if available
         prev = (previous_context or {}).get(conv.dialog.name)
         if prev:
             parts.append("Previous classification:")
