@@ -115,3 +115,62 @@ def test_chat_message_reply_to_defaults_to_none():
         is_me=False,
     )
     assert msg.reply_to_message_id is None
+
+
+def test_format_renders_reply_to_user():
+    msg = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="agreed",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=42,
+        is_me=False,
+        reply_to_message_id=39,
+    )
+    rendered = msg.format(replied_text="should we ship the vault?", replied_is_me=True)
+    assert '(↩ to YOU: "should we ship the vault?")' in rendered
+    assert "agreed" in rendered
+
+
+def test_format_renders_reply_to_other():
+    msg = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="agreed",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=42,
+        is_me=False,
+        reply_to_message_id=37,
+    )
+    rendered = msg.format(replied_text="alice's question text", replied_is_me=False)
+    assert '(↩ to "alice\'s question text")' in rendered
+    assert "↩ to YOU" not in rendered
+
+
+def test_format_no_reply_marker_when_replied_text_none():
+    msg = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="hello",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=42,
+        is_me=False,
+    )
+    rendered = msg.format()
+    assert "↩" not in rendered
+
+
+def test_format_truncates_replied_text_to_60_chars():
+    long_text = "a" * 100
+    msg = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="ok",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=42,
+        is_me=False,
+        reply_to_message_id=37,
+    )
+    rendered = msg.format(replied_text=long_text, replied_is_me=False)
+    assert "a" * 60 in rendered
+    assert "a" * 61 not in rendered

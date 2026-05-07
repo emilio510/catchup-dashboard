@@ -32,10 +32,17 @@ class ChatMessage:
     is_me: bool
     reply_to_message_id: int | None = None
 
-    def format(self) -> str:
+    def format(self, replied_text: str | None = None, replied_is_me: bool = False) -> str:
         tag = " (me)" if self.is_me else ""
         ts = self.date.strftime("%Y-%m-%d %H:%M")
-        return f"[{ts}] {self.sender_name}{tag}: {self.text}"
+        prefix = f"[{ts}] {self.sender_name}{tag}"
+        if replied_text:
+            snippet = replied_text[:60].replace("\n", " ")
+            if replied_is_me:
+                prefix += f' (↩ to YOU: "{snippet}")'
+            else:
+                prefix += f' (↩ to "{snippet}")'
+        return f"{prefix}: {self.text}"
 
 
 @dataclass(frozen=True)
