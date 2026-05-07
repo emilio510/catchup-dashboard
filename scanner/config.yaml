@@ -86,6 +86,25 @@ classification:
     - In group chats, distinguish between messages directed at me specifically vs.
       general group discussion. A @AkgEmilio mention = P0/P1. A general group
       question not directed at me = P2/P3.
+  user_aliases:
+    - Emile
+    - Em
+    - Emilio
+    - Akgemilio
+    - "@AkgEmilio"
+    - Akg
+  topics_owned:
+    - Aave
+    - GHO
+    - sGHO
+    - Logic Protocol
+    - USDT0
+    - vault
+    - Pendle
+    - looper
+    - treasury
+    - Mantle
+    - incentives
 
 output:
   telegram_digest: true
