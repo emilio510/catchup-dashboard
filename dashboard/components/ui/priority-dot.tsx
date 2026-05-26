@@ -8,13 +8,14 @@ interface PriorityDotProps {
 export function PriorityDot({ priority, size = 6 }: PriorityDotProps) {
   return (
     <div
+      className="shrink-0 rounded-full"
       style={{
         width: size,
         height: size,
-        borderRadius: "50%",
         background: PRIORITY_CONFIG[priority].color,
-        flexShrink: 0,
+        boxShadow: priority === "P0" ? "0 0 6px rgba(255,69,58,0.5)" : undefined,
       }}
+      aria-hidden
     />
   );
 }
