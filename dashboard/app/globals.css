@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Exclude docs from Tailwind scanning — markdown files contain placeholder
+   class fragments like text-[var(--color-...)] that PostCSS cannot parse. */
+@source not "../docs/**";
+
 @theme {
   /* Surfaces */
   --color-bg: #0a0a0c;
