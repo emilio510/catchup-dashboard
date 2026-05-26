@@ -19,27 +19,28 @@ export function SourceBreakdown({ items }: SourceBreakdownProps) {
   const max = Math.max(...entries.map(([, c]) => c));
 
   return (
-    <div>
-      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.5px", color: "#475569", marginBottom: 8 }}>
+    <div className="py-3 border-b border-dashed border-[var(--color-border)] last:border-none">
+      <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-ghost)] mb-2">
         Sources
       </div>
       {entries.map(([source, count]) => {
         const config = SOURCE_CONFIG[source];
         return (
-          <div key={source} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 10, color: "#64748b", width: 36 }}>{config.label}</span>
-            <div style={{ flex: 1, height: 6, background: "#162038", borderRadius: 3, overflow: "hidden" }}>
+          <div key={source} className="flex items-center justify-between py-1 text-[11px] gap-2">
+            <span className="font-sans text-[var(--color-text)] w-10 shrink-0">{config.label}</span>
+            <div
+              className="flex-1 h-1.5 rounded-full overflow-hidden"
+              style={{ background: "var(--color-bg-elev)" }}
+            >
               <div
+                className="h-full rounded-full opacity-70"
                 style={{
-                  height: "100%",
                   width: `${(count / max) * 100}%`,
                   background: config.color,
-                  borderRadius: 3,
-                  opacity: 0.7,
                 }}
               />
             </div>
-            <span style={{ fontSize: 10, color: "#64748b", width: 20, textAlign: "right" }}>{count}</span>
+            <span className="font-mono text-[var(--color-text-dim)] w-5 text-right">{count}</span>
           </div>
         );
       })}
