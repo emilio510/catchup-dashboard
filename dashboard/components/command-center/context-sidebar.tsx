@@ -31,28 +31,27 @@ export function ContextSidebar({
   recentActivity,
 }: ContextSidebarProps) {
   return (
-    <div
-      style={{
-        borderLeft: "1px solid #1e2a4a",
-        background: "#141b33",
-        padding: 16,
-        overflowY: "auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-      }}
-    >
-      <OverdueAlerts items={allItems} onSelectItem={onSelectItem} />
+    <aside className="flex h-screen flex-col overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-bg)] px-3">
+      {/* Glass widgets — separated by margin */}
+      <div className="pt-3 mb-3">
+        <OverdueAlerts items={allItems} onSelectItem={onSelectItem} />
+      </div>
+      <div className="mb-3">
+        <CalendarEvents items={allItems} />
+      </div>
+      <div className="mb-3">
+        <ScannerStatus
+          scannedAt={scannedAt}
+          dialogsListed={dialogsListed}
+          dialogsClassified={dialogsClassified}
+        />
+      </div>
+
+      {/* Flat widgets — each carries its own border-b via the widget root */}
       <SourceBreakdown items={allItems} />
       <InboxHealth data={inboxHealthData} />
-      <CalendarEvents items={allItems} />
-      <ScannerStatus
-        scannedAt={scannedAt}
-        dialogsListed={dialogsListed}
-        dialogsClassified={dialogsClassified}
-      />
       <MiniAnalytics data={analyticsData} />
       <RecentActivity activities={recentActivity} />
-    </div>
+    </aside>
   );
 }
