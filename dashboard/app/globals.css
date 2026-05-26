@@ -1,10 +1,110 @@
 @import "tailwindcss";
 
-body {
-  background-color: #0c0f1a;
-  color: #e2e8f0;
+@theme {
+  /* Surfaces */
+  --color-bg: #0a0a0c;
+  /* --color-bg-elev = flat surfaces (table rows, list items, hover bg). No border, no blur. */
+  --color-bg-elev: rgba(255, 255, 255, 0.03);
+  /* --color-bg-card = glass surfaces (used via the .glass utility — pairs with border + blur). */
+  --color-bg-card: rgba(255, 255, 255, 0.04);
+  --color-bg-card-hover: rgba(255, 255, 255, 0.06);
+
+  /* Borders */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* Text — three tiers */
+  --color-text: #f5f5f7;
+  --color-text-dim: rgba(255, 255, 255, 0.6);
+  --color-text-ghost: rgba(255, 255, 255, 0.35);
+
+  /* Semantic — color reserved for signals only */
+  --color-risk: #ff453a;
+  --color-risk-soft: rgba(255, 69, 58, 0.12);
+  --color-ok: #30d158;
+  --color-ok-soft: rgba(48, 209, 88, 0.10);
+  --color-warn: #ff9f0a;
+  --color-warn-soft: rgba(255, 159, 10, 0.10);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 200ms;
+  --dur-rise: 500ms;
+  --dur-meter: 900ms;
+
+  /* Fonts.
+     next/font/google in layout.tsx sets --font-sans / --font-mono on the <html>
+     element to the loaded font-face name. That declaration has higher cascade
+     priority than this @theme block, so it overrides at runtime. */
+  --font-sans: -apple-system, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+html, body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/* Glass surface utility */
+.glass {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Motion keyframes */
+@keyframes efm-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes efm-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes efm-fill {
+  from { width: 0; }
+  to { width: var(--efm-fill-to, 100%); }
+}
+@keyframes efm-risk-pulse {
+  0%, 100% { text-shadow: none; }
+  50% { text-shadow: 0 0 24px rgba(255, 69, 58, 0.5); }
+}
+@keyframes efm-glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 69, 58, 0.3); }
+  50% { box-shadow: 0 0 18px rgba(255, 69, 58, 0.6); }
+}
+
+.efm-rise { opacity: 0; animation: efm-rise var(--dur-rise) var(--ease-out) forwards; }
+.efm-fade { opacity: 0; animation: efm-fade var(--dur-fast) var(--ease-out) forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Preserve the existing pulse keyframe (used by some existing components) */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
