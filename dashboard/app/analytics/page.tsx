@@ -18,28 +18,24 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
   const data = await getAnalyticsData(validDays);
 
   return (
-    <main style={{ maxWidth: 900, margin: "0 auto", padding: "24px" }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link href="/" style={{ fontSize: 13, color: "#64748b", textDecoration: "none" }}>
+    <main className="mx-auto max-w-[900px] px-6 py-6">
+      <div className="mb-6 flex items-baseline justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="font-mono text-[11px] text-[var(--color-text-ghost)] no-underline hover:text-[var(--color-text)]">
             &larr; Dashboard
           </Link>
-          <h1 style={{ fontSize: 18, fontWeight: 600 }}>Inbox Health</h1>
+          <h1 className="font-sans text-[18px] font-semibold text-[var(--color-text)]">Inbox Health</h1>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="flex gap-2">
           {[7, 30, 90].map((d) => (
             <Link
               key={d}
-              href={`/analytics?days=${d}`}
-              style={{
-                padding: "5px 12px",
-                fontSize: 12,
-                borderRadius: 6,
-                border: d === validDays ? "1px solid #3b82f6" : "1px solid #1e2a4a",
-                color: d === validDays ? "#e2e8f0" : "#64748b",
-                background: d === validDays ? "rgba(59,130,246,0.12)" : "transparent",
-                textDecoration: "none",
-              }}
+              href={`?days=${d}`}
+              className={`rounded-md px-2.5 py-1 font-mono text-[11px] transition-colors ${
+                d === validDays
+                  ? "bg-[var(--color-bg-elev)] text-[var(--color-text)]"
+                  : "text-[var(--color-text-ghost)] hover:text-[var(--color-text)]"
+              }`}
             >
               {d}d
             </Link>
@@ -48,14 +44,14 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       </div>
 
       {data.labels.length === 0 ? (
-        <p style={{ color: "#64748b" }}>No scan data available for this time range.</p>
+        <p className="font-sans text-[13px] text-[var(--color-text-dim)]">No scan data available for this time range.</p>
       ) : (
-        <div style={{ background: "#141b33", borderRadius: 10, padding: 24, border: "1px solid #1e2a4a" }}>
+        <div className="glass p-4">
           <AnalyticsChart labels={data.labels} datasets={data.datasets} />
         </div>
       )}
 
-      <p style={{ fontSize: 11, color: "#64748b", marginTop: 16 }}>
+      <p className="mt-4 font-mono text-[11px] text-[var(--color-text-ghost)]">
         Showing open items per priority across {data.labels.length} scans in the last {validDays} days.
       </p>
     </main>
