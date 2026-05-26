@@ -8,21 +8,15 @@ export function WaitingBadge({ waitingDays, priority }: WaitingBadgeProps) {
 
   const text = `${Math.round(waitingDays)}d wait`;
   const isUrgent = priority === "P0" || priority === "P1";
-  const color = priority === "P0" ? "#f87171" : "#fbbf24";
-
   if (!isUrgent) return null;
+
+  const toneClass = priority === "P0"
+    ? "bg-[var(--color-risk-soft)] text-[var(--color-risk)]"
+    : "bg-[var(--color-warn-soft)] text-[var(--color-warn)]";
 
   return (
     <span
-      style={{
-        fontSize: 9,
-        padding: "1px 5px",
-        borderRadius: 3,
-        background: `${color}15`,
-        color,
-        fontWeight: 600,
-        whiteSpace: "nowrap",
-      }}
+      className={`inline-flex whitespace-nowrap rounded-[3px] px-[5px] py-px font-mono text-[9px] font-semibold ${toneClass}`}
     >
       {text}
     </span>
