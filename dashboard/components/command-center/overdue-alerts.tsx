@@ -1,3 +1,5 @@
+import { GlassCard } from "@/components/ui/glass-card";
+import { PriorityDot } from "@/components/ui/priority-dot";
 import type { TriageItem } from "@/lib/types";
 
 interface OverdueAlertsProps {
@@ -16,39 +18,30 @@ export function OverdueAlerts({ items, onSelectItem }: OverdueAlertsProps) {
   if (overdue.length === 0) return null;
 
   return (
-    <div
-      style={{
-        background: "rgba(248,113,113,0.08)",
-        border: "1px solid rgba(248,113,113,0.2)",
-        borderRadius: 8,
-        padding: "10px 12px",
-      }}
-    >
-      <div style={{ fontSize: 12, fontWeight: 600, color: "#f87171", marginBottom: 6 }}>
+    <GlassCard className="p-3">
+      <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-ghost)] mb-2">
+        Overdue alerts
+      </div>
+      <div className="text-[11px] text-[var(--color-risk)] font-medium mb-2">
         {overdue.length} item{overdue.length > 1 ? "s" : ""} overdue
       </div>
       {overdue.map((item) => (
         <button
           key={item.id}
           onClick={() => onSelectItem(item)}
-          style={{
-            display: "block",
-            width: "100%",
-            textAlign: "left",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: 11,
-            color: "#e2e8f0",
-            padding: "2px 0",
-          }}
+          className="flex items-center justify-between gap-2 py-1 w-full text-left bg-transparent border-none cursor-pointer"
         >
-          {item.chat_name}{" "}
-          <span style={{ color: "#64748b" }}>
-            ({item.priority}, {Math.round(item.waiting_days!)}d)
+          <span className="flex items-center gap-1.5 min-w-0">
+            <PriorityDot priority={item.priority} />
+            <span className="font-sans text-[11px] text-[var(--color-text)] truncate">
+              {item.chat_name}
+            </span>
+          </span>
+          <span className="font-mono text-[10px] text-[var(--color-text-ghost)] shrink-0">
+            {Math.round(item.waiting_days!)}d
           </span>
         </button>
       ))}
-    </div>
+    </GlassCard>
   );
 }
