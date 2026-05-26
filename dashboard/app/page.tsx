@@ -1,5 +1,6 @@
 import { getLatestScan, getTriageItems, getInboxHealthData, getAnalyticsData, getRecentActivity } from "@/lib/db";
 import { CommandCenter } from "@/components/command-center/command-center";
+import { computeOverdueCounts, overdueRatio } from "@/lib/overdue";
 import type { Priority } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     P3: items.filter((i) => i.priority === "P3"),
   };
 
+  const overdue = computeOverdueCounts(items);
+  const meterRatio = overdueRatio(overdue.total);
+
   return (
     <CommandCenter
       items={byPriority}
@@ -74,6 +78,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       inboxHealthData={inboxHealthData}
       analyticsData={{ P0: analyticsRaw.datasets.P0, P1: analyticsRaw.datasets.P1 }}
       recentActivity={recentActivity}
+      overdue={overdue}
+      meterRatio={meterRatio}
     />
   );
 }

@@ -19,6 +19,8 @@ interface CommandCenterProps {
   inboxHealthData: { date: string; count: number }[];
   analyticsData: { P0: number[]; P1: number[] };
   recentActivity: { chat_name: string; user_status: string; user_status_at: string }[];
+  overdue: { p0: number; p1: number; total: number };
+  meterRatio: number;
 }
 
 type Breakpoint = "desktop" | "tablet" | "mobile";
@@ -52,6 +54,8 @@ export function CommandCenter({
   inboxHealthData,
   analyticsData,
   recentActivity,
+  overdue,
+  meterRatio,
 }: CommandCenterProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const bp = useBreakpoint();
@@ -110,6 +114,8 @@ export function CommandCenter({
           currentSource={currentSource}
           currentChatType={currentChatType}
           currentSearch={currentSearch}
+          overdue={overdue}
+          meterRatio={meterRatio}
         />
       </div>
     );
@@ -135,6 +141,8 @@ export function CommandCenter({
           currentSource={currentSource}
           currentChatType={currentChatType}
           currentSearch={currentSearch}
+          overdue={overdue}
+          meterRatio={meterRatio}
         />
         <div style={{ overflow: "hidden" }}>
           <DetailPane item={selectedItem} byPriority={byPriority} total={total} />
@@ -162,6 +170,8 @@ export function CommandCenter({
         currentSource={currentSource}
         currentChatType={currentChatType}
         currentSearch={currentSearch}
+        overdue={overdue}
+        meterRatio={meterRatio}
       />
       <div style={{ overflow: "hidden" }}>
         <DetailPane item={selectedItem} byPriority={byPriority} total={total} />

@@ -14,6 +14,8 @@ interface QueuePanelProps {
   currentSource?: string;
   currentChatType?: string;
   currentSearch?: string;
+  overdue: { p0: number; p1: number; total: number };
+  meterRatio: number;
 }
 
 export function QueuePanel({
@@ -25,6 +27,8 @@ export function QueuePanel({
   currentSource,
   currentChatType,
   currentSearch,
+  overdue,
+  meterRatio,
 }: QueuePanelProps) {
   const byPriority = {
     P0: items.P0.length,
@@ -43,6 +47,8 @@ export function QueuePanel({
           currentSource={currentSource}
           currentChatType={currentChatType}
           currentSearch={currentSearch}
+          overdue={overdue}
+          meterRatio={meterRatio}
         />
       </Suspense>
       <div className="flex-1 overflow-y-auto">
