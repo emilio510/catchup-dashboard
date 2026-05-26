@@ -17,20 +17,14 @@ export function Avatar({ name, priority, size = 36 }: AvatarProps) {
   const color = PRIORITY_CONFIG[priority].color;
   return (
     <div
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-[var(--color-bg-elev)] font-sans font-semibold text-[var(--color-text)]"
       style={{
         width: size,
         height: size,
-        borderRadius: "50%",
-        background: "#1a2340",
         border: `2px solid ${color}`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: size * 0.38,
-        fontWeight: 600,
-        color: "#e2e8f0",
-        flexShrink: 0,
+        fontSize: Math.round(size * 0.38),
       }}
+      aria-label={name}
     >
       {getInitials(name)}
     </div>
