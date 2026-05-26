@@ -1,3 +1,5 @@
+import { GlassCard } from "@/components/ui/glass-card";
+
 const DEFAULT_THRESHOLD = 0;
 
 export function HeroMeter({
@@ -32,7 +34,7 @@ export function HeroMeter({
     ? "efm-fill var(--dur-meter) var(--ease-out) 400ms forwards, efm-glow-pulse 3s ease-in-out 1.5s infinite"
     : "efm-fill var(--dur-meter) var(--ease-out) 400ms forwards";
   return (
-    <div className="glass flex flex-col justify-between p-[14px]">
+    <GlassCard className="flex flex-col justify-between p-[14px]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-ghost)]">
@@ -68,6 +70,6 @@ export function HeroMeter({
           }}
         />
       </div>
-    </div>
+    </GlassCard>
   );
 }
