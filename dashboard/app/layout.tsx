@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   title: "Catch-up Dashboard",
@@ -11,9 +12,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} bg-[#0c0f1a] text-[#e2e8f0] min-h-screen`}>
-        {children}
+    <html lang="en" className={`dark ${sans.variable} ${mono.variable}`}>
+      <body className="relative min-h-screen overflow-x-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
+        {/* Background glows — fixed so they don't scroll with content */}
+        <div
+          aria-hidden
+          className="pointer-events-none fixed -left-32 -top-40 h-[520px] w-[520px] rounded-full bg-white opacity-[0.04] blur-[100px]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none fixed -right-40 top-[20vh] h-[420px] w-[420px] rounded-full opacity-[0.18] blur-[100px]"
+          style={{ background: "var(--color-risk)" }}
+        />
+        <div className="relative z-10">{children}</div>
       </body>
     </html>
   );
