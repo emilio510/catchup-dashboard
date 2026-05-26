@@ -47,9 +47,9 @@ export function MiniAnalytics({ data }: MiniAnalyticsProps) {
           </svg>
         )}
         <div className="font-mono text-[11px]">
-          <span style={{ color: "#ff453a" }}>P0: {currentP0}</span>
+          <span className="text-[var(--color-risk)]">P0: {currentP0}</span>
           {" "}
-          <span style={{ color: "#ff9f0a" }}>P1: {currentP1}</span>
+          <span className="text-[var(--color-warn)]">P1: {currentP1}</span>
         </div>
       </div>
     </Link>

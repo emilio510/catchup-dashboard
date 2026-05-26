@@ -29,8 +29,7 @@ export function SourceBreakdown({ items }: SourceBreakdownProps) {
           <div key={source} className="flex items-center justify-between py-1 text-[11px] gap-2">
             <span className="font-sans text-[var(--color-text)] w-10 shrink-0">{config.label}</span>
             <div
-              className="flex-1 h-1.5 rounded-full overflow-hidden"
-              style={{ background: "var(--color-bg-elev)" }}
+              className="flex-1 h-1.5 rounded-full overflow-hidden bg-[var(--color-bg-elev)]"
             >
               <div
                 className="h-full rounded-full opacity-70"
