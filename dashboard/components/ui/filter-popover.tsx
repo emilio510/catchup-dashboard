@@ -37,116 +37,76 @@ export function FilterPopover({
   ];
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 6,
-          border: `1px solid ${hasFilters ? "#3b82f6" : "#1e2a4a"}`,
-          background: hasFilters ? "#3b82f615" : "transparent",
-          color: hasFilters ? "#60a5fa" : "#64748b",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 12,
-          transition: "all 0.15s",
-        }}
+        className={[
+          "inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 font-mono text-[10px] transition-colors",
+          hasFilters
+            ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+            : "border-[var(--color-border)] bg-[var(--color-bg-elev)] text-[var(--color-text-dim)] hover:text-[var(--color-text)]",
+        ].join(" ")}
         title="Filters"
       >
         F
       </button>
       {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: 32,
-            right: 0,
-            width: 200,
-            background: "#141b33",
-            border: "1px solid #1e2a4a",
-            borderRadius: 10,
-            padding: 12,
-            zIndex: 50,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-          }}
-        >
-          <div style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
+        <div className="glass absolute right-0 z-50 mt-1 min-w-[180px] p-1">
+          <div className="mb-2 px-2 pt-1 font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--color-text-ghost)]">
             Source
           </div>
           {sources.map((s) => (
             <button
               key={s}
               onClick={() => onSourceChange(currentSource === s ? undefined : s)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                width: "100%",
-                padding: "4px 0",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 12,
-                color: currentSource === s ? "#e2e8f0" : "#64748b",
-                textAlign: "left",
-              }}
+              className={[
+                "flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-[11px]",
+                currentSource === s
+                  ? "bg-[var(--color-bg-card-hover)] text-[var(--color-text)]"
+                  : "text-[var(--color-text-dim)] hover:bg-[var(--color-bg-elev)]",
+              ].join(" ")}
             >
               <div
+                className="shrink-0 rounded-full"
                 style={{
                   width: 6,
                   height: 6,
-                  borderRadius: "50%",
                   background: SOURCE_CONFIG[s].color,
                 }}
               />
               {SOURCE_CONFIG[s].label}
-              {currentSource === s && <span style={{ marginLeft: "auto", color: "#60a5fa" }}>&#10003;</span>}
+              {currentSource === s && (
+                <span className="ml-auto text-[var(--color-accent)]">&#10003;</span>
+              )}
             </button>
           ))}
-          <div style={{ height: 1, background: "#1e2a4a", margin: "8px 0" }} />
-          <div style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
+          <div className="my-2 h-px bg-[var(--color-border)]" />
+          <div className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--color-text-ghost)]">
             Type
           </div>
           {chatTypes.map((t) => (
             <button
               key={t.value}
               onClick={() => onChatTypeChange(currentChatType === t.value ? undefined : t.value)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                width: "100%",
-                padding: "4px 0",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 12,
-                color: currentChatType === t.value ? "#e2e8f0" : "#64748b",
-                textAlign: "left",
-              }}
+              className={[
+                "flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-[11px]",
+                currentChatType === t.value
+                  ? "bg-[var(--color-bg-card-hover)] text-[var(--color-text)]"
+                  : "text-[var(--color-text-dim)] hover:bg-[var(--color-bg-elev)]",
+              ].join(" ")}
             >
               {t.label}
-              {currentChatType === t.value && <span style={{ marginLeft: "auto", color: "#60a5fa" }}>&#10003;</span>}
+              {currentChatType === t.value && (
+                <span className="ml-auto text-[var(--color-accent)]">&#10003;</span>
+              )}
             </button>
           ))}
           {hasFilters && (
             <>
-              <div style={{ height: 1, background: "#1e2a4a", margin: "8px 0" }} />
+              <div className="my-2 h-px bg-[var(--color-border)]" />
               <button
                 onClick={() => { onSourceChange(undefined); onChatTypeChange(undefined); }}
-                style={{
-                  width: "100%",
-                  padding: "4px 0",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 11,
-                  color: "#f87171",
-                  textAlign: "center",
-                }}
+                className="w-full rounded-sm px-2 py-1.5 text-center text-[11px] text-[var(--color-risk)] hover:bg-[var(--color-bg-elev)]"
               >
                 Clear filters
               </button>
