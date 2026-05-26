@@ -43,7 +43,7 @@ export function FilterPopover({
         className={[
           "inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 font-mono text-[10px] transition-colors",
           hasFilters
-            ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+            ? "border-[var(--color-border-strong)] bg-[var(--color-bg-card-hover)] text-[var(--color-text)]"
             : "border-[var(--color-border)] bg-[var(--color-bg-elev)] text-[var(--color-text-dim)] hover:text-[var(--color-text)]",
         ].join(" ")}
         title="Filters"
@@ -76,7 +76,7 @@ export function FilterPopover({
               />
               {SOURCE_CONFIG[s].label}
               {currentSource === s && (
-                <span className="ml-auto text-[var(--color-accent)]">&#10003;</span>
+                <span className="ml-auto text-[var(--color-ok)]">&#10003;</span>
               )}
             </button>
           ))}
@@ -97,7 +97,7 @@ export function FilterPopover({
             >
               {t.label}
               {currentChatType === t.value && (
-                <span className="ml-auto text-[var(--color-accent)]">&#10003;</span>
+                <span className="ml-auto text-[var(--color-ok)]">&#10003;</span>
               )}
             </button>
           ))}
