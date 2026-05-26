@@ -80,23 +80,16 @@ export function CommandCenter({
   if (bp === "mobile") {
     if (selectedItem) {
       return (
-        <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid #1e2a4a", background: "#141b33" }}>
+        <div className="flex h-screen flex-col">
+          <div className="border-b border-[var(--color-border)] bg-[color:rgba(10,10,12,0.6)] px-3 py-2 backdrop-blur-[20px]">
             <button
               onClick={() => setSelectedId(null)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#60a5fa",
-                fontSize: 13,
-                cursor: "pointer",
-                padding: 0,
-              }}
+              className="bg-transparent text-[13px] text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
             >
               &larr; Back to queue
             </button>
           </div>
-          <div style={{ flex: 1, overflow: "auto" }}>
+          <div className="flex-1 overflow-auto">
             <DetailPane item={selectedItem} byPriority={byPriority} total={total} />
           </div>
         </div>
@@ -104,7 +97,7 @@ export function CommandCenter({
     }
 
     return (
-      <div style={{ height: "100vh", overflow: "hidden" }}>
+      <div className="h-screen overflow-hidden">
         <QueuePanel
           items={items}
           total={total}
@@ -124,14 +117,7 @@ export function CommandCenter({
   // Tablet: queue + detail, no sidebar
   if (bp === "tablet") {
     return (
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "300px 1fr",
-          height: "100vh",
-          overflow: "hidden",
-        }}
-      >
+      <div className="grid h-screen grid-cols-[300px_1fr] overflow-hidden">
         <QueuePanel
           items={items}
           total={total}
@@ -144,7 +130,7 @@ export function CommandCenter({
           overdue={overdue}
           meterRatio={meterRatio}
         />
-        <div style={{ overflow: "hidden" }}>
+        <div className="overflow-hidden">
           <DetailPane item={selectedItem} byPriority={byPriority} total={total} />
         </div>
       </div>
@@ -153,14 +139,7 @@ export function CommandCenter({
 
   // Desktop: three panels
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "300px 1fr 320px",
-        height: "100vh",
-        overflow: "hidden",
-      }}
-    >
+    <div className="grid h-screen grid-cols-[300px_1fr_320px] overflow-hidden">
       <QueuePanel
         items={items}
         total={total}
@@ -173,7 +152,7 @@ export function CommandCenter({
         overdue={overdue}
         meterRatio={meterRatio}
       />
-      <div style={{ overflow: "hidden" }}>
+      <div className="overflow-hidden">
         <DetailPane item={selectedItem} byPriority={byPriority} total={total} />
       </div>
       <ContextSidebar
