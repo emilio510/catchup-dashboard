@@ -14,6 +14,8 @@ interface QueuePanelProps {
   currentSource?: string;
   currentChatType?: string;
   currentSearch?: string;
+  overdue: { p0: number; p1: number; total: number };
+  meterRatio: number;
 }
 
 export function QueuePanel({
@@ -25,6 +27,8 @@ export function QueuePanel({
   currentSource,
   currentChatType,
   currentSearch,
+  overdue,
+  meterRatio,
 }: QueuePanelProps) {
   const byPriority = {
     P0: items.P0.length,
@@ -34,16 +38,8 @@ export function QueuePanel({
   };
 
   return (
-    <div
-      style={{
-        borderRight: "1px solid #1e2a4a",
-        background: "#141b33",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      <Suspense fallback={<div style={{ height: 120 }} />}>
+    <div className="flex h-screen flex-col overflow-hidden border-r border-[var(--color-border)] bg-[var(--color-bg)]">
+      <Suspense fallback={<div className="h-[120px]" />}>
         <QueueHeader
           total={total}
           byPriority={byPriority}
@@ -51,9 +47,11 @@ export function QueuePanel({
           currentSource={currentSource}
           currentChatType={currentChatType}
           currentSearch={currentSearch}
+          overdue={overdue}
+          meterRatio={meterRatio}
         />
       </Suspense>
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div className="flex-1 overflow-y-auto">
         {(["P0", "P1", "P2", "P3"] as const).map((p) => (
           <QueueSection
             key={p}

@@ -36,16 +36,8 @@ export function ReplyArea({ item }: ReplyAreaProps) {
 
   if (sent) {
     return (
-      <div
-        style={{
-          background: "rgba(74,222,128,0.08)",
-          border: "1px solid rgba(74,222,128,0.2)",
-          borderRadius: 10,
-          padding: "10px 14px",
-          marginTop: 14,
-        }}
-      >
-        <div style={{ fontSize: 12, color: "#4ade80" }}>
+      <div className="glass m-3 p-3">
+        <div className="font-sans text-[12px] text-[var(--color-ok)]">
           Reply queued -- will be sent within 2 minutes
         </div>
       </div>
@@ -53,52 +45,26 @@ export function ReplyArea({ item }: ReplyAreaProps) {
   }
 
   const errorBanner = error ? (
-    <div
-      style={{
-        background: "rgba(248,113,113,0.08)",
-        border: "1px solid rgba(248,113,113,0.2)",
-        borderRadius: 10,
-        padding: "10px 14px",
-        marginTop: 8,
-      }}
-    >
-      <div style={{ fontSize: 12, color: "#f87171" }}>{error}</div>
+    <div className="mt-2 rounded-[10px] border border-[var(--color-risk-soft)] bg-[var(--color-risk-soft)] px-3.5 py-2.5">
+      <div className="font-sans text-[12px] text-[var(--color-risk)]">{error}</div>
     </div>
   ) : null;
 
   if (!editing && item.draft_reply) {
     return (
-      <div style={{ marginTop: 14 }}>
+      <div className="glass m-3 p-3">
         <button onClick={() => setEditing(true)} className="w-full text-left">
           <MessageBubble text={item.draft_reply} side="right" italic />
         </button>
-        <div
-          style={{
-            fontSize: 10,
-            color: "#475569",
-            marginTop: 4,
-            textAlign: "right",
-            paddingRight: 4,
-          }}
-        >
+        <div className="mt-1 pr-1 text-right font-mono text-[10px] text-[var(--color-text-ghost)]">
           AI-drafted -- click to edit
         </div>
         {item.chat_id && (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+          <div className="mt-2 flex justify-end">
             <button
               onClick={handleSend}
               disabled={isPending}
-              style={{
-                padding: "6px 16px",
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                background: "#3b82f6",
-                color: "white",
-                border: "none",
-                cursor: "pointer",
-                opacity: isPending ? 0.5 : 1,
-              }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-ok-soft)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--color-ok)] transition-colors hover:bg-[color:rgba(48,209,88,0.18)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isPending ? "Queuing..." : `Send via ${sourceLabel}`}
             </button>
@@ -110,66 +76,29 @@ export function ReplyArea({ item }: ReplyAreaProps) {
   }
 
   return (
-    <div style={{ marginTop: 14 }}>
-      <div
-        style={{
-          fontSize: 9,
-          textTransform: "uppercase",
-          letterSpacing: "0.5px",
-          color: "#475569",
-          marginBottom: 6,
-        }}
-      >
+    <div className="glass m-3 p-3">
+      <div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.5px] text-[var(--color-text-ghost)]">
         Your Reply
       </div>
-      <textarea
-        value={replyText}
-        onChange={(e) => setReplyText(e.target.value)}
-        maxLength={4096}
-        placeholder="Type your reply..."
-        style={{
-          width: "100%",
-          minHeight: 80,
-          background: "#0c0f1a",
-          border: "1px solid #1e2a4a",
-          borderRadius: 10,
-          padding: "12px 14px",
-          fontSize: 13,
-          color: "#e2e8f0",
-          resize: "vertical",
-          fontFamily: "inherit",
-          lineHeight: 1.5,
-          outline: "none",
-        }}
-        onFocus={(e) => (e.currentTarget.style.borderColor = "#60a5fa")}
-        onBlur={(e) => (e.currentTarget.style.borderColor = "#1e2a4a")}
-      />
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: 8,
-        }}
-      >
-        <span style={{ fontSize: 10, color: "#475569" }}>
+      <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg)] transition-colors focus-within:border-[var(--color-border-strong)]">
+        <textarea
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          maxLength={4096}
+          placeholder="Type your reply..."
+          className="w-full resize-y bg-transparent px-3.5 py-3 font-sans text-[13px] leading-[1.5] text-[var(--color-text)] placeholder:text-[var(--color-text-ghost)] focus:outline-none"
+          style={{ minHeight: 80 }}
+        />
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="font-mono text-[10px] text-[var(--color-text-ghost)]">
           {item.draft_reply ? "AI-drafted -- edit before sending" : ""}
         </span>
         {item.chat_id && (
           <button
             onClick={handleSend}
             disabled={isPending || !replyText.trim()}
-            style={{
-              padding: "6px 16px",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 600,
-              background: "#3b82f6",
-              color: "white",
-              border: "none",
-              cursor: "pointer",
-              opacity: isPending || !replyText.trim() ? 0.5 : 1,
-            }}
+            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-ok-soft)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--color-ok)] transition-colors hover:bg-[color:rgba(48,209,88,0.18)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isPending ? "Queuing..." : `Send via ${sourceLabel}`}
           </button>

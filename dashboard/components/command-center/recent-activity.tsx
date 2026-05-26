@@ -24,31 +24,35 @@ function actionLabel(status: string): string {
   }
 }
 
+function statusColor(status: string): string {
+  switch (status) {
+    case "done": return "var(--color-ok)";
+    case "snoozed": return "var(--color-warn)";
+    default: return "var(--color-text-ghost)";
+  }
+}
+
 export function RecentActivity({ activities }: RecentActivityProps) {
   if (activities.length === 0) return null;
 
   return (
-    <div>
-      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.5px", color: "#475569", marginBottom: 8 }}>
+    <div className="py-3 border-b border-dashed border-[var(--color-border)] last:border-none">
+      <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-ghost)] mb-2">
         Activity
       </div>
       {activities.map((a, i) => (
         <div
           key={i}
-          style={{
-            display: "flex",
-            gap: 8,
-            padding: "4px 0",
-            fontSize: 11,
-            color: "#64748b",
-            borderBottom: i < activities.length - 1 ? "1px solid #162038" : "none",
-          }}
+          className="flex items-baseline justify-between py-1 text-[11px]"
         >
-          <span style={{ color: "#475569", whiteSpace: "nowrap", flexShrink: 0 }}>
-            {formatTime(a.user_status_at)}
+          <span className="font-sans text-[var(--color-text)] truncate">
+            {a.chat_name}
           </span>
-          <span>
-            {actionLabel(a.user_status)} {a.chat_name}
+          <span
+            className="font-mono text-[10px] shrink-0 ml-2"
+            style={{ color: statusColor(a.user_status) }}
+          >
+            {actionLabel(a.user_status)} · {formatTime(a.user_status_at)}
           </span>
         </div>
       ))}

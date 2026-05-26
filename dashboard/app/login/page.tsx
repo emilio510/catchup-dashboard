@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { GlassCard } from "@/components/ui/glass-card";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,78 +35,31 @@ export default function LoginPage() {
   }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#0c0f1a",
-      }}
-    >
-      <div
-        style={{
-          background: "#141b33",
-          border: "1px solid #1e2a4a",
-          borderRadius: 12,
-          padding: 32,
-          width: 320,
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 16,
-            fontWeight: 600,
-            color: "#e2e8f0",
-            marginBottom: 24,
-            textAlign: "center",
-          }}
+    <main className="flex min-h-screen items-center justify-center px-6">
+      <GlassCard className="w-full max-w-[400px] p-6">
+      <form onSubmit={handleSubmit}>
+        <h1 className="font-sans text-[18px] font-semibold text-[var(--color-text)]">Sign in</h1>
+        <p className="mt-1 font-sans text-[12px] text-[var(--color-text-dim)]">Enter the dashboard password.</p>
+        <input
+          type="password"
+          name="password"
+          autoComplete="current-password"
+          autoFocus
+          placeholder="Password"
+          className="mt-4 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3 py-2 font-sans text-[13px] text-[var(--color-text)] placeholder:text-[var(--color-text-ghost)] focus:border-[var(--color-border-strong)] focus:outline-none"
+        />
+        {error && (
+          <p className="mt-3 font-mono text-[11px] text-[var(--color-risk)]">{error}</p>
+        )}
+        <button
+          type="submit"
+          disabled={pending}
+          className="mt-4 w-full rounded-md bg-[var(--color-ok-soft)] py-2 font-mono text-[12px] font-medium text-[var(--color-ok)] transition-colors hover:bg-[color:rgba(48,209,88,0.18)] disabled:opacity-50"
         >
-          Catch-up Dashboard
-        </h1>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            autoFocus
-            style={{
-              width: "100%",
-              background: "#0c0f1a",
-              border: "1px solid #1e2a4a",
-              borderRadius: 8,
-              padding: "8px 12px",
-              fontSize: 13,
-              color: "#e2e8f0",
-              outline: "none",
-              marginBottom: 16,
-            }}
-          />
-          <button
-            type="submit"
-            disabled={pending}
-            style={{
-              width: "100%",
-              background: "#238636",
-              color: "white",
-              fontSize: 13,
-              fontWeight: 500,
-              padding: "8px 0",
-              borderRadius: 8,
-              border: "none",
-              cursor: "pointer",
-              opacity: pending ? 0.5 : 1,
-            }}
-          >
-            {pending ? "..." : "Sign in"}
-          </button>
-          {error && (
-            <p style={{ color: "#f87171", fontSize: 11, marginTop: 12, textAlign: "center" }}>
-              {error}
-            </p>
-          )}
-        </form>
-      </div>
+          {pending ? "..." : "Sign in"}
+        </button>
+      </form>
+      </GlassCard>
     </main>
   );
 }

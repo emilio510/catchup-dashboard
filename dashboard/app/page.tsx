@@ -1,5 +1,6 @@
 import { getLatestScan, getTriageItems, getInboxHealthData, getAnalyticsData, getRecentActivity } from "@/lib/db";
 import { CommandCenter } from "@/components/command-center/command-center";
+import { computeOverdueCounts, overdueRatio } from "@/lib/overdue";
 import type { Priority } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -19,20 +20,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   if (!scan) {
     return (
-      <main style={{ maxWidth: 700, margin: "0 auto", padding: "60px 24px", textAlign: "center" }}>
-        <div style={{ fontSize: 40, opacity: 0.2, marginBottom: 16 }}>&#9993;</div>
-        <h1 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No scans yet</h1>
-        <p style={{ color: "#64748b", fontSize: 13, marginBottom: 16 }}>Run the scanner first:</p>
-        <code
-          style={{
-            display: "block",
-            background: "#141b33",
-            border: "1px solid #1e2a4a",
-            padding: 16,
-            borderRadius: 10,
-            fontSize: 12,
-          }}
-        >
+      <main className="mx-auto max-w-[700px] px-6 py-16 text-center">
+        <h1 className="font-sans text-[18px] font-semibold text-[var(--color-text)]">No scans yet</h1>
+        <p className="mt-2 font-sans text-[13px] text-[var(--color-text-dim)]">Run the scanner first:</p>
+        <code className="mt-4 block rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-elev)] p-4 font-mono text-[12px] text-[var(--color-text)]">
           cd scanner && python -m src.cli --config config.yaml --no-digest
         </code>
       </main>
@@ -60,6 +51,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     P3: items.filter((i) => i.priority === "P3"),
   };
 
+  const overdue = computeOverdueCounts(items);
+  const meterRatio = overdueRatio(overdue.total);
+
   return (
     <CommandCenter
       items={byPriority}
@@ -74,6 +68,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       inboxHealthData={inboxHealthData}
       analyticsData={{ P0: analyticsRaw.datasets.P0, P1: analyticsRaw.datasets.P1 }}
       recentActivity={recentActivity}
+      overdue={overdue}
+      meterRatio={meterRatio}
     />
   );
 }

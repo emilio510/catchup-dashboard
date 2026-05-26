@@ -2,6 +2,7 @@
 
 import { SourceBadge } from "@/components/ui/source-badge";
 import { WaitingBadge } from "@/components/ui/waiting-badge";
+import { PriorityDot } from "@/components/ui/priority-dot";
 import type { TriageItem } from "@/lib/types";
 
 interface QueueItemProps {
@@ -26,61 +27,32 @@ export function QueueItem({ item, selected, onSelect }: QueueItemProps) {
   return (
     <button
       onClick={() => onSelect(item)}
-      className="w-full text-left"
-      style={{
-        padding: "8px 12px",
-        borderBottom: "1px solid #162038",
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 8,
-        background: selected ? "#1a2340" : "transparent",
-        borderLeft: selected ? "2px solid #60a5fa" : "2px solid transparent",
-        transition: "background 0.15s",
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => {
-        if (!selected) e.currentTarget.style.background = "#141b33";
-      }}
-      onMouseLeave={(e) => {
-        if (!selected) e.currentTarget.style.background = "transparent";
-      }}
+      className={`group w-full rounded-[10px] border p-3 text-left backdrop-blur-[16px] transition-all duration-200 ${
+        selected
+          ? "border-[var(--color-border-strong)] bg-[var(--color-bg-card-hover)]"
+          : "border-[var(--color-border)] bg-[var(--color-bg-card)] hover:-translate-y-[1px] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-card-hover)]"
+      }`}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#e2e8f0",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              maxWidth: 160,
-            }}
-          >
-            {item.chat_name}
-          </span>
-          <SourceBadge source={item.source} />
-        </div>
-        <div
-          style={{
-            fontSize: 11,
-            color: "#64748b",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            marginTop: 2,
-          }}
-        >
-          {item.preview}
-        </div>
-      </div>
-      <div style={{ textAlign: "right", flexShrink: 0 }}>
-        <div style={{ fontSize: 10, color: "#475569" }}>
-          {relativeTime(item.last_message_at)}
-        </div>
-        <div style={{ marginTop: 2 }}>
-          <WaitingBadge waitingDays={item.waiting_days} priority={item.priority} />
+      <div className="flex items-start gap-2.5">
+        <PriorityDot priority={item.priority} size={6} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="truncate font-sans text-[12px] font-medium text-[var(--color-text)]">
+              {item.chat_name}
+            </div>
+            <div className="shrink-0 font-mono text-[10px] text-[var(--color-text-ghost)]">
+              {relativeTime(item.last_message_at)}
+            </div>
+          </div>
+          {item.preview && (
+            <div className="mt-1 truncate font-sans text-[11px] text-[var(--color-text-dim)]">
+              {item.preview}
+            </div>
+          )}
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <SourceBadge source={item.source} />
+            <WaitingBadge waitingDays={item.waiting_days} priority={item.priority} />
+          </div>
         </div>
       </div>
     </button>

@@ -32,6 +32,8 @@ class ClassificationConfig(BaseModel):
     rate_limit_rpm: int = 30
     user_context: str = ""
     api_key: str = ""
+    user_aliases: list[str] = Field(default_factory=list)
+    topics_owned: list[str] = Field(default_factory=list)
 
 
 class OutputConfig(BaseModel):

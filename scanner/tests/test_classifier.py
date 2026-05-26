@@ -1,6 +1,9 @@
 import json
+import pytest
 from datetime import datetime, timezone
-from src.classifier import build_classification_prompt, parse_classification_response
+from unittest.mock import AsyncMock, MagicMock
+from src.classifier import build_classification_prompt, parse_classification_response, SYSTEM_PROMPT, Classifier
+from src.config import ScannerConfig, ClassificationConfig, TelegramConfig
 from src.telegram_reader import DialogInfo, ChatMessage, ConversationData
 
 
@@ -134,3 +137,297 @@ def test_build_prompt_without_previous_context():
     ])
     prompt = build_classification_prompt([conv], "akgemilio", "I work at TokenLogic.")
     assert "Previous classification" not in prompt
+
+
+def test_build_prompt_includes_aliases_when_provided():
+    conv = make_conversation("Test", [("Alice", "hi", False)])
+    prompt = build_classification_prompt(
+        [conv], "akgemilio", "I work at TokenLogic.",
+        user_aliases=["Emile", "Em", "@AkgEmilio"],
+    )
+    assert "User aliases" in prompt
+    assert "Emile" in prompt
+    assert "@AkgEmilio" in prompt
+
+
+def test_build_prompt_includes_topics_when_provided():
+    conv = make_conversation("Test", [("Alice", "hi", False)])
+    prompt = build_classification_prompt(
+        [conv], "akgemilio", "I work at TokenLogic.",
+        topics_owned=["Aave", "GHO", "USDT0"],
+    )
+    assert "Topics the user owns" in prompt
+    assert "Aave" in prompt
+    assert "USDT0" in prompt
+
+
+def test_build_prompt_omits_aliases_section_when_empty():
+    conv = make_conversation("Test", [("Alice", "hi", False)])
+    prompt = build_classification_prompt(
+        [conv], "akgemilio", "I work at TokenLogic.",
+    )
+    assert "User aliases" not in prompt
+
+
+def test_build_prompt_omits_topics_section_when_empty():
+    conv = make_conversation("Test", [("Alice", "hi", False)])
+    prompt = build_classification_prompt(
+        [conv], "akgemilio", "I work at TokenLogic.",
+    )
+    assert "Topics the user owns" not in prompt
+
+
+ANCHOR = "--- YOUR LAST MESSAGE ABOVE ---"
+
+
+def test_anchor_inserted_after_last_me_message():
+    conv = make_conversation("Group", [
+        ("Bob", "starting topic", False),
+        ("Alice", "more context", False),
+        ("Emile", "my take", True),
+        ("Bob", "any thoughts on this?", False),
+    ])
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    body = prompt.split("--- CHAT:")[1]
+    assert ANCHOR in body
+    me_idx = body.index("my take")
+    anchor_idx = body.index(ANCHOR)
+    later_idx = body.index("any thoughts on this?")
+    assert me_idx < anchor_idx < later_idx
+
+
+def test_anchor_omitted_when_no_me_message():
+    conv = make_conversation("Group", [
+        ("Bob", "starting topic", False),
+        ("Alice", "more context", False),
+    ])
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    assert ANCHOR not in prompt
+
+
+def test_anchor_uses_most_recent_me_message_when_multiple():
+    conv = make_conversation("Group", [
+        ("Emile", "first take", True),
+        ("Bob", "reply", False),
+        ("Emile", "second take", True),
+        ("Alice", "follow-up question", False),
+    ])
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    body = prompt.split("--- CHAT:")[1]
+    second_take_idx = body.index("second take")
+    anchor_idx = body.index(ANCHOR)
+    follow_up_idx = body.index("follow-up question")
+    assert second_take_idx < anchor_idx < follow_up_idx
+    # Anchor must NOT appear after the first me message — only after the last
+    assert body.count(ANCHOR) == 1
+
+
+def test_prompt_renders_reply_to_user_marker():
+    me_msg = ChatMessage(
+        sender_name="Emile", sender_id=100,
+        text="should we ship the vault?",
+        date=datetime(2026, 5, 7, 14, 0, tzinfo=timezone.utc),
+        message_id=10, is_me=True,
+    )
+    reply_msg = ChatMessage(
+        sender_name="Bob", sender_id=200,
+        text="yes lgtm",
+        date=datetime(2026, 5, 7, 14, 5, tzinfo=timezone.utc),
+        message_id=11, is_me=False,
+        reply_to_message_id=10,
+    )
+    conv = ConversationData(
+        dialog=DialogInfo(chat_id=1, name="Group", is_channel=False, is_bot=False,
+                          last_message_sender_is_me=False, last_message_date=reply_msg.date),
+        messages=[me_msg, reply_msg],
+        chat_type="group",
+    )
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    assert '(↩ to YOU: "should we ship the vault?")' in prompt
+
+
+def test_prompt_renders_reply_to_other_marker():
+    alice_msg = ChatMessage(
+        sender_name="Alice", sender_id=300,
+        text="what's the timeline?",
+        date=datetime(2026, 5, 7, 14, 0, tzinfo=timezone.utc),
+        message_id=20, is_me=False,
+    )
+    bob_reply = ChatMessage(
+        sender_name="Bob", sender_id=200,
+        text="end of week",
+        date=datetime(2026, 5, 7, 14, 5, tzinfo=timezone.utc),
+        message_id=21, is_me=False,
+        reply_to_message_id=20,
+    )
+    conv = ConversationData(
+        dialog=DialogInfo(chat_id=1, name="Group", is_channel=False, is_bot=False,
+                          last_message_sender_is_me=False, last_message_date=bob_reply.date),
+        messages=[alice_msg, bob_reply],
+        chat_type="group",
+    )
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    assert '(↩ to "what\'s the timeline?")' in prompt
+    assert "↩ to YOU" not in prompt
+
+
+def test_prompt_renders_reply_outside_window_when_target_missing():
+    bob_reply = ChatMessage(
+        sender_name="Bob", sender_id=200,
+        text="agreed",
+        date=datetime(2026, 5, 7, 14, 5, tzinfo=timezone.utc),
+        message_id=21, is_me=False,
+        reply_to_message_id=999,  # not in conversation
+    )
+    conv = ConversationData(
+        dialog=DialogInfo(chat_id=1, name="Group", is_channel=False, is_bot=False,
+                          last_message_sender_is_me=False, last_message_date=bob_reply.date),
+        messages=[bob_reply],
+        chat_type="group",
+    )
+    prompt = build_classification_prompt([conv], "akgemilio", "")
+    assert '(↩ to "msg outside window")' in prompt
+
+
+def test_system_prompt_has_two_step_decision():
+    assert "DECIDE IN THIS ORDER" in SYSTEM_PROMPT
+    assert "Is the user being addressed" in SYSTEM_PROMPT
+
+
+def test_system_prompt_has_strict_group_default():
+    assert "GROUP CHATS" in SYSTEM_PROMPT
+    assert "STRICT DEFAULT" in SYSTEM_PROMPT
+    assert "addressed_to_user=false" in SYSTEM_PROMPT
+
+
+def test_system_prompt_uses_lower_priority_default():
+    assert "CHOOSE THE LOWER PRIORITY" in SYSTEM_PROMPT
+    assert "ALWAYS choose the HIGHER" not in SYSTEM_PROMPT
+
+
+def test_system_prompt_requires_addressed_to_user_field():
+    assert "addressed_to_user" in SYSTEM_PROMPT
+    assert "address_reason" in SYSTEM_PROMPT
+
+
+def test_classifier_wires_config_aliases_and_topics_to_prompt():
+    """Verify that Classifier passes config aliases/topics to build_classification_prompt."""
+    from src.config import ScannerConfig, ClassificationConfig, ScanConfig, TelegramConfig, OutputConfig, CalendarConfig, EscalationConfig, NotionConfig
+
+    config = ScannerConfig(
+        scan=ScanConfig(),
+        telegram=TelegramConfig(api_id=123, api_hash="test"),
+        classification=ClassificationConfig(
+            api_key="test-key",
+            user_context="Test context",
+            user_aliases=["Emile", "@AkgEmilio"],
+            topics_owned=["Aave", "GHO"],
+        ),
+        output=OutputConfig(),
+        calendar=CalendarConfig(),
+        escalation=EscalationConfig(),
+        notion=NotionConfig(),
+    )
+
+    conv = make_conversation("Test", [("Alice", "hi", False)])
+    prompt = build_classification_prompt(
+        [conv],
+        "akgemilio",
+        config.classification.user_context,
+        user_aliases=config.classification.user_aliases,
+        topics_owned=config.classification.topics_owned,
+    )
+
+    # Verify aliases and topics are included in the prompt
+    assert "User aliases" in prompt
+    assert "Emile" in prompt
+    assert "@AkgEmilio" in prompt
+    assert "Topics the user owns" in prompt
+    assert "Aave" in prompt
+    assert "GHO" in prompt
+
+
+# ---------------------------------------------------------------------------
+# Task 9: belt-and-suspenders enforcement tests
+# ---------------------------------------------------------------------------
+
+def _make_classifier_with_response(response_json: str) -> Classifier:
+    config = ScannerConfig(
+        classification=ClassificationConfig(api_key="dummy"),
+        telegram=TelegramConfig(api_id=1, api_hash="x"),
+    )
+    classifier = Classifier(config)
+
+    fake_response = MagicMock()
+    fake_response.content = [MagicMock(type="text", text=response_json)]
+    fake_response.stop_reason = "end_turn"
+
+    classifier._client = MagicMock()
+    classifier._client.messages = MagicMock()
+    classifier._client.messages.create = AsyncMock(return_value=fake_response)
+    return classifier
+
+
+@pytest.mark.asyncio
+async def test_enforcement_forces_p3_for_unaddressed_group():
+    response = json.dumps([
+        {
+            "chat_name": "Big Group",
+            "addressed_to_user": False,
+            "address_reason": "not_addressed",
+            "priority": "P0",  # model slipped -- should be overridden
+            "status": "READ_NO_REPLY",
+            "preview": "...",
+        }
+    ])
+    classifier = _make_classifier_with_response(response)
+    conv = make_conversation("Big Group", [("Bob", "ambient chatter", False)])
+    items = await classifier.classify_batch([conv], "akgemilio")
+    assert len(items) == 1
+    assert items[0].priority == "P3"
+    assert items[0].status == "MONITORING"
+
+
+@pytest.mark.asyncio
+async def test_enforcement_does_not_override_dm_priority():
+    response = json.dumps([
+        {
+            "chat_name": "Alice DM",
+            "addressed_to_user": False,
+            "address_reason": "not_addressed",
+            "priority": "P1",
+            "status": "READ_NO_REPLY",
+            "preview": "...",
+        }
+    ])
+    classifier = _make_classifier_with_response(response)
+    dm_conv = ConversationData(
+        dialog=DialogInfo(chat_id=42, name="Alice DM", is_channel=False, is_bot=False,
+                          last_message_sender_is_me=False,
+                          last_message_date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc)),
+        messages=[ChatMessage(sender_name="Alice", sender_id=200, text="hey",
+                              date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+                              message_id=1, is_me=False)],
+        chat_type="dm",
+    )
+    items = await classifier.classify_batch([dm_conv], "akgemilio")
+    assert items[0].priority == "P1"  # NOT overridden
+    assert items[0].status == "READ_NO_REPLY"
+
+
+@pytest.mark.asyncio
+async def test_enforcement_does_not_override_addressed_group():
+    response = json.dumps([
+        {
+            "chat_name": "Logic Protocol Core",
+            "addressed_to_user": True,
+            "address_reason": "alias_mention",
+            "priority": "P1",
+            "status": "READ_NO_REPLY",
+            "preview": "...",
+        }
+    ])
+    classifier = _make_classifier_with_response(response)
+    conv = make_conversation("Logic Protocol Core", [("Marc", "Emile, can you look?", False)])
+    items = await classifier.classify_batch([conv], "akgemilio")
+    assert items[0].priority == "P1"  # NOT overridden -- addressed=True

@@ -30,11 +30,19 @@ class ChatMessage:
     date: datetime
     message_id: int
     is_me: bool
+    reply_to_message_id: int | None = None
 
-    def format(self) -> str:
+    def format(self, replied_text: str | None = None, replied_is_me: bool = False) -> str:
         tag = " (me)" if self.is_me else ""
         ts = self.date.strftime("%Y-%m-%d %H:%M")
-        return f"[{ts}] {self.sender_name}{tag}: {self.text}"
+        prefix = f"[{ts}] {self.sender_name}{tag}"
+        if replied_text:
+            snippet = replied_text[:60].replace("\n", " ")
+            if replied_is_me:
+                prefix += f' (↩ to YOU: "{snippet}")'
+            else:
+                prefix += f' (↩ to "{snippet}")'
+        return f"{prefix}: {self.text}"
 
 
 @dataclass(frozen=True)
@@ -161,6 +169,10 @@ class TelegramReader:
                 elif isinstance(msg.sender, (Chat, Channel)):
                     sender_name = msg.sender.title or str(sender_id)
 
+            reply_to_id = None
+            if msg.reply_to is not None:
+                reply_to_id = getattr(msg.reply_to, "reply_to_msg_id", None)
+
             messages.append(
                 ChatMessage(
                     sender_name=sender_name,
@@ -169,6 +181,7 @@ class TelegramReader:
                     date=msg.date,
                     message_id=msg.id,
                     is_me=sender_id == self._me_id,
+                    reply_to_message_id=reply_to_id,
                 )
             )
 

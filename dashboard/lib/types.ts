@@ -42,11 +42,13 @@ export interface ScanInfo {
   };
 }
 
-export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string }> = {
-  P0: { label: "Respond Today", color: "#f87171" },
-  P1: { label: "This Week", color: "#fbbf24" },
-  P2: { label: "Respond", color: "#4ade80" },
-  P3: { label: "Monitor", color: "#94a3b8" },
+export type Tone = "risk" | "warn" | "ok" | "ghost";
+
+export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; tone: Tone }> = {
+  P0: { label: "Respond Today", color: "var(--color-risk)", tone: "risk" },
+  P1: { label: "This Week", color: "var(--color-warn)", tone: "warn" },
+  P2: { label: "Respond", color: "var(--color-ok)", tone: "ok" },
+  P3: { label: "Monitor", color: "var(--color-text-ghost)", tone: "ghost" },
 };
 
 export const SOURCE_CONFIG: Record<Source, { label: string; color: string }> = {

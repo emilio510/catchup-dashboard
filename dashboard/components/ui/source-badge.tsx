@@ -8,15 +8,10 @@ export function SourceBadge({ source }: SourceBadgeProps) {
   const config = SOURCE_CONFIG[source];
   return (
     <span
+      className="inline-flex whitespace-nowrap rounded-[3px] px-[5px] py-px font-mono text-[9px] font-medium tracking-[0.04em]"
       style={{
-        fontSize: 9,
-        padding: "1px 5px",
-        borderRadius: 3,
-        background: `${config.color}15`,
+        background: `${config.color}1f`,
         color: config.color,
-        fontWeight: 500,
-        letterSpacing: "0.3px",
-        whiteSpace: "nowrap",
       }}
     >
       {config.label}

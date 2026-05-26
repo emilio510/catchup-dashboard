@@ -15,41 +15,54 @@ from src.telegram_reader import ConversationData
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """\
-You are a personal communication triage assistant. You analyze conversations and classify them by urgency.
+You are a personal communication triage assistant.
 
-RULES:
-- When in doubt between two priority levels, ALWAYS choose the HIGHER (more urgent) one.
-- P0 (Respond Today): Someone is actively blocked, deal-critical, or has pinged multiple times.
-- P1 (This Week): Important deliverable, meeting prep, or time-sensitive request.
-- P2 (Respond): Someone asked a question or made a request, but not urgent.
-- P3 (Monitor): FYI, general discussion, no specific action needed from the user.
+DECIDE IN THIS ORDER:
+1. Is the user being addressed by this conversation? (Most important in groups.)
+2. If yes, what is the urgency?
 
-PRIORITY STABILITY:
-- If a previous classification is provided, do not downgrade priority unless the new messages
-  clearly resolve the conversation (e.g., the issue was fixed, the question was answered by
-  someone else). When in doubt, keep the previous priority.
+GROUP CHATS (chat_type == "group") — STRICT DEFAULT:
+The default is addressed_to_user=false, priority=P3, status=MONITORING.
+Set addressed_to_user=true ONLY if at least one is true:
+  (a) A message uses one of the user's aliases (case-insensitive substring match).
+  (b) A message is a Telegram reply (rendered as "↩ to YOU") pointing to a message the user sent.
+  (c) A direct question appears AFTER "--- YOUR LAST MESSAGE ABOVE ---" and
+      either names a topic the user owns or follows naturally from what the
+      user just said.
+  (d) The conversation is asking for an action/decision on a topic the user
+      owns (from the topics list provided).
 
-DONE ITEM AWARENESS:
-- If the user previously marked an item as "done", only re-triage as open if the new messages
-  genuinely reopen the conversation (new question, new request, new topic). Reactions, "thanks",
-  acknowledgments, thumbs-up, and other low-signal messages should NOT reopen a done item.
-  For these cases, set priority to P3 and status to MONITORING.
+DMs (chat_type == "dm"):
+addressed_to_user=true by default, unless the conversation is clearly closed
+(last message is "thanks", an emoji-only reply, or an acknowledgment).
 
-For each conversation, output a JSON array with one object per conversation:
+PRIORITY (only when addressed_to_user=true):
+- P0 Respond Today: actively blocked, deal-critical, multiple pings.
+- P1 This Week: important deliverable, meeting prep, time-sensitive.
+- P2 Respond: question or request, not urgent.
+- P3 Monitor: FYI, no action needed.
+
+WHEN UNCERTAIN, CHOOSE THE LOWER PRIORITY.
+Better to miss a ping than spam the user.
+
+STABILITY: don't downgrade a previous priority unless new messages clearly
+resolve the conversation. Don't reopen "done" items on reactions/thanks/acks.
+
+OUTPUT (JSON array, one entry per chat). Output ONLY the array.
 {
-  "chat_name": "exact chat name",
-  "priority": "P0" | "P1" | "P2" | "P3",
-  "status": "READ_NO_REPLY" | "NEW" | "MONITORING",
-  "waiting_person": "name of person waiting" or null,
-  "waiting_since": "ISO 8601 timestamp of first unanswered message" or null,
-  "waiting_days": number or null,
-  "tags": ["tag1", "tag2"],
-  "context_summary": "1-2 sentence summary of what's happening",
-  "draft_reply": "suggested response" or null,
-  "preview": "the most relevant recent message, truncated to 200 chars"
+  "chat_name": "...",
+  "addressed_to_user": true|false,
+  "address_reason": "alias_mention"|"reply_to_user"|"question_after_user"|"topic_owned"|"dm_default"|"not_addressed",
+  "priority": "P0"|"P1"|"P2"|"P3",
+  "status": "READ_NO_REPLY"|"NEW"|"MONITORING",
+  "waiting_person": "..."|null,
+  "waiting_since": "ISO 8601"|null,
+  "waiting_days": int|null,
+  "tags": [...],
+  "context_summary": "1-2 sentences",
+  "draft_reply": "..."|null,
+  "preview": "200 chars"
 }
-
-Output ONLY the JSON array. No markdown, no explanation.\
 """
 
 
@@ -60,6 +73,8 @@ def build_classification_prompt(
     calendar_context: str = "",
     previous_context: dict[str, dict] | None = None,
     notion_context: str = "",
+    user_aliases: list[str] | None = None,
+    topics_owned: list[str] | None = None,
 ) -> str:
     parts = [
         f"User context: {user_context}",
@@ -67,6 +82,18 @@ def build_classification_prompt(
         f"Current time: {datetime.now(timezone.utc).isoformat()}",
         "",
     ]
+
+    if user_aliases:
+        parts.append("User aliases (any case-insensitive substring match counts as a mention):")
+        for alias in user_aliases:
+            parts.append(f"  - {alias}")
+        parts.append("")
+
+    if topics_owned:
+        parts.append("Topics the user owns (decisions/actions on these topics likely require the user):")
+        for topic in topics_owned:
+            parts.append(f"  - {topic}")
+        parts.append("")
 
     if calendar_context:
         parts.append(calendar_context)
@@ -86,7 +113,6 @@ def build_classification_prompt(
     for conv in conversations:
         parts.append(f"--- CHAT: {conv.dialog.name} (type: {conv.chat_type}) ---")
 
-        # Inject previous classification context if available
         prev = (previous_context or {}).get(conv.dialog.name)
         if prev:
             parts.append("Previous classification:")
@@ -99,8 +125,27 @@ def build_classification_prompt(
                 parts.append(f"  - Previous preview: \"{prev['preview']}\"")
             parts.append("")
 
-        for msg in conv.messages:
-            parts.append(msg.format())
+        last_me_index = -1
+        for i, msg in enumerate(conv.messages):
+            if msg.is_me:
+                last_me_index = i
+
+        msg_by_id = {m.message_id: m for m in conv.messages}
+
+        for i, msg in enumerate(conv.messages):
+            replied_text: str | None = None
+            replied_is_me = False
+            if msg.reply_to_message_id is not None:
+                target = msg_by_id.get(msg.reply_to_message_id)
+                if target is not None:
+                    replied_text = target.text
+                    replied_is_me = target.is_me
+                else:
+                    replied_text = "msg outside window"
+                    replied_is_me = False
+            parts.append(msg.format(replied_text=replied_text, replied_is_me=replied_is_me))
+            if i == last_me_index and last_me_index >= 0:
+                parts.append("--- YOUR LAST MESSAGE ABOVE ---")
         parts.append("")
 
     return "\n".join(parts)
@@ -188,6 +233,8 @@ class Classifier:
             calendar_context=self.calendar_context,
             previous_context=previous_context,
             notion_context=self.notion_context,
+            user_aliases=self._config.classification.user_aliases,
+            topics_owned=self._config.classification.topics_owned,
         )
 
         response = None
@@ -249,6 +296,19 @@ class Classifier:
                 chat_id = conv.dialog.chat_id if conv else 0
                 chat_type = conv.chat_type if conv else "dm"
                 last_msg_id = conv.messages[-1].message_id if conv and conv.messages else 0
+
+                # Belt-and-suspenders enforcement: in group chats, if the model
+                # says the user wasn't addressed, force the result to P3/MONITORING
+                # regardless of what priority the model returned.
+                if chat_type == "group" and not entry.get("addressed_to_user", False):
+                    logger.info(
+                        "Forcing P3/MONITORING for unaddressed group chat %r (model said priority=%s, address_reason=%s)",
+                        chat_name,
+                        entry.get("priority"),
+                        entry.get("address_reason"),
+                    )
+                    entry["priority"] = "P3"
+                    entry["status"] = "MONITORING"
 
                 # Use the actual latest message date from the dialog listing,
                 # not datetime.now() which breaks dedup comparisons.

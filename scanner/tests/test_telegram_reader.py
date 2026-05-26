@@ -1,7 +1,11 @@
+import pytest
 from datetime import datetime, timezone, timedelta
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 from src.telegram_reader import (
     DialogInfo,
     ChatMessage,
+    TelegramReader,
     should_filter_dialog,
 )
 from src.config import ScannerConfig, ScanConfig, TelegramConfig
@@ -90,3 +94,168 @@ def test_chat_message_format():
     formatted = msg.format()
     assert "Marc" in formatted
     assert "vault params" in formatted
+
+
+def test_chat_message_carries_reply_to_message_id():
+    msg_with_reply = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="yeah I agree",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=42,
+        is_me=False,
+        reply_to_message_id=39,
+    )
+    assert msg_with_reply.reply_to_message_id == 39
+
+
+def test_chat_message_reply_to_defaults_to_none():
+    msg = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="hello",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=1,
+        is_me=False,
+    )
+    assert msg.reply_to_message_id is None
+
+
+def test_format_renders_reply_to_user():
+    msg = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="agreed",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=42,
+        is_me=False,
+        reply_to_message_id=39,
+    )
+    rendered = msg.format(replied_text="should we ship the vault?", replied_is_me=True)
+    assert '(↩ to YOU: "should we ship the vault?")' in rendered
+    assert "agreed" in rendered
+
+
+def test_format_renders_reply_to_other():
+    msg = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="agreed",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=42,
+        is_me=False,
+        reply_to_message_id=37,
+    )
+    rendered = msg.format(replied_text="alice's question text", replied_is_me=False)
+    assert '(↩ to "alice\'s question text")' in rendered
+    assert "↩ to YOU" not in rendered
+
+
+def test_format_no_reply_marker_when_replied_text_none():
+    msg = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="hello",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=42,
+        is_me=False,
+    )
+    rendered = msg.format()
+    assert "↩" not in rendered
+
+
+def test_format_truncates_replied_text_to_60_chars():
+    long_text = "a" * 100
+    msg = ChatMessage(
+        sender_name="Bob",
+        sender_id=200,
+        text="ok",
+        date=datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc),
+        message_id=42,
+        is_me=False,
+        reply_to_message_id=37,
+    )
+    rendered = msg.format(replied_text=long_text, replied_is_me=False)
+    assert "a" * 60 in rendered
+    assert "a" * 61 not in rendered
+
+
+def _fake_telethon_message(*, msg_id: int, text: str, sender_id: int, date_min: int, reply_to_id: int | None):
+    msg = MagicMock()
+    msg.id = msg_id
+    msg.text = text
+    msg.sender = None  # forces sender_name="unknown" branch (we don't test that here)
+    msg.sender_id = sender_id
+    msg.date = datetime(2026, 5, 7, 12, date_min, tzinfo=timezone.utc)
+    msg.reply_to = SimpleNamespace(reply_to_msg_id=reply_to_id) if reply_to_id is not None else None
+    return msg
+
+
+@pytest.mark.asyncio
+async def test_deep_read_captures_reply_to_message_id():
+    config = make_config()
+    reader = TelegramReader(config)
+    reader._me_id = 100
+
+    fake_messages = [
+        _fake_telethon_message(msg_id=1, text="original", sender_id=200, date_min=1, reply_to_id=None),
+        _fake_telethon_message(msg_id=2, text="reply", sender_id=300, date_min=2, reply_to_id=1),
+    ]
+
+    async def fake_iter_messages(*args, **kwargs):
+        for m in fake_messages:
+            yield m
+
+    fake_client = MagicMock()
+    fake_client.iter_messages = fake_iter_messages
+    fake_entity = SimpleNamespace()  # not a User, will become "group"
+    fake_client.get_entity = AsyncMock(return_value=fake_entity)
+    reader._client = fake_client
+
+    dialog = DialogInfo(
+        chat_id=999, name="Test Group", is_channel=False, is_bot=False,
+        last_message_sender_is_me=False,
+        last_message_date=datetime(2026, 5, 7, 12, 5, tzinfo=timezone.utc),
+    )
+
+    conv = await reader.deep_read(dialog)
+
+    assert len(conv.messages) == 2
+    assert conv.messages[0].reply_to_message_id is None
+    assert conv.messages[1].reply_to_message_id == 1
+
+
+@pytest.mark.asyncio
+async def test_deep_read_handles_reply_to_without_msg_id_attr():
+    """Telethon's MessageReplyStoryHeader has no reply_to_msg_id; getattr fallback to None."""
+    config = make_config()
+    reader = TelegramReader(config)
+    reader._me_id = 100
+
+    # Fake a Telethon message whose reply_to lacks reply_to_msg_id entirely
+    msg_without_attr = MagicMock()
+    msg_without_attr.id = 5
+    msg_without_attr.text = "story reply"
+    msg_without_attr.sender = None
+    msg_without_attr.sender_id = 200
+    msg_without_attr.date = datetime(2026, 5, 7, 12, 5, tzinfo=timezone.utc)
+    msg_without_attr.reply_to = SimpleNamespace()  # no reply_to_msg_id attribute
+
+    async def fake_iter_messages(*args, **kwargs):
+        yield msg_without_attr
+
+    fake_client = MagicMock()
+    fake_client.iter_messages = fake_iter_messages
+    fake_client.get_entity = AsyncMock(return_value=SimpleNamespace())
+    reader._client = fake_client
+
+    dialog = DialogInfo(
+        chat_id=1, name="Test", is_channel=False, is_bot=False,
+        last_message_sender_is_me=False,
+        last_message_date=datetime(2026, 5, 7, 12, 5, tzinfo=timezone.utc),
+    )
+
+    conv = await reader.deep_read(dialog)
+
+    assert len(conv.messages) == 1
+    assert conv.messages[0].reply_to_message_id is None  # getattr fallback worked

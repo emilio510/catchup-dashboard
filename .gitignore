@@ -33,3 +33,4 @@ scanner/token.json
 scanner/credentials.json
 token.json
 credentials.json
+.claude/
