@@ -1,6 +1,7 @@
 import { getAnalyticsData } from "@/lib/db";
 import { AnalyticsChart } from "@/components/analytics-chart";
 import Link from "next/link";
+import { GlassCard } from "@/components/ui/glass-card";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +47,9 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       {data.labels.length === 0 ? (
         <p className="font-sans text-[13px] text-[var(--color-text-dim)]">No scan data available for this time range.</p>
       ) : (
-        <div className="glass p-4">
+        <GlassCard className="p-4">
           <AnalyticsChart labels={data.labels} datasets={data.datasets} />
-        </div>
+        </GlassCard>
       )}
 
       <p className="mt-4 font-mono text-[11px] text-[var(--color-text-ghost)]">

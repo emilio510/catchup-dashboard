@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { GlassCard } from "@/components/ui/glass-card";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,10 +36,8 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
-      <form
-        onSubmit={handleSubmit}
-        className="glass w-full max-w-[400px] p-6"
-      >
+      <GlassCard className="w-full max-w-[400px] p-6">
+      <form onSubmit={handleSubmit}>
         <h1 className="font-sans text-[18px] font-semibold text-[var(--color-text)]">Sign in</h1>
         <p className="mt-1 font-sans text-[12px] text-[var(--color-text-dim)]">Enter the dashboard password.</p>
         <input
@@ -60,6 +59,7 @@ export default function LoginPage() {
           {pending ? "..." : "Sign in"}
         </button>
       </form>
+      </GlassCard>
     </main>
   );
 }
