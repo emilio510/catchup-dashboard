@@ -6,11 +6,11 @@ interface InboxHealthProps {
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-function getColor(count: number): string {
-  if (count === 0) return "rgba(248,113,113,0.15)";
-  if (count <= 2) return "rgba(251,191,36,0.3)";
-  if (count <= 4) return "rgba(74,222,128,0.4)";
-  return "rgba(74,222,128,0.6)";
+function getBarColor(count: number): string {
+  if (count === 0) return "var(--color-risk-soft)";
+  if (count <= 2) return "var(--color-warn-soft)";
+  if (count <= 4) return "var(--color-ok-soft)";
+  return "var(--color-ok)";
 }
 
 export function InboxHealth({ data }: InboxHealthProps) {
@@ -25,29 +25,31 @@ export function InboxHealth({ data }: InboxHealthProps) {
   }
 
   return (
-    <div>
-      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.5px", color: "#475569", marginBottom: 8 }}>
+    <div className="py-3 border-b border-dashed border-[var(--color-border)] last:border-none">
+      <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-ghost)] mb-2">
         Inbox Health
       </div>
-      <div style={{ display: "flex", gap: 3 }}>
+      <div className="flex gap-[3px]">
         {days.map((day) => (
           <div
             key={day.label}
             title={`${day.label}: ${day.count} cleared`}
+            className="flex-1 h-6 rounded-sm cursor-default"
             style={{
-              flex: 1,
-              height: 24,
-              borderRadius: 3,
-              background: getColor(day.count),
-              border: day.isToday ? "1px solid #1e2a4a" : "none",
-              cursor: "default",
+              background: getBarColor(day.count),
+              border: day.isToday
+                ? "1px solid var(--color-border-strong)"
+                : "1px solid transparent",
             }}
           />
         ))}
       </div>
-      <div style={{ display: "flex", gap: 3, marginTop: 2 }}>
+      <div className="flex gap-[3px] mt-0.5">
         {days.map((day) => (
-          <div key={day.label} style={{ flex: 1, textAlign: "center", fontSize: 8, color: "#475569" }}>
+          <div
+            key={day.label}
+            className="flex-1 text-center font-mono text-[8px] text-[var(--color-text-ghost)]"
+          >
             {day.label}
           </div>
         ))}
