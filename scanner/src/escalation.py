@@ -60,6 +60,26 @@ def format_reminder(
     return "\n".join(lines)
 
 
+def format_reminder_digest(items: list[dict]) -> str:
+    """Bundle every overdue item into a single message, grouped by priority.
+
+    Sending one message per item floods the user when several chats are
+    overdue at once; this collapses them into one notification per run.
+    """
+    lines = [f"{len(items)} overdue item(s) need a reply", ""]
+    for priority in ("P0", "P1", "P2", "P3"):
+        group = [item for item in items if item["priority"] == priority]
+        if not group:
+            continue
+        lines.append(f"{priority} ({len(group)}):")
+        for item in group:
+            person = item["waiting_person"] or "Someone"
+            hours_int = int(item["hours_overdue"])
+            lines.append(f"  - {item['chat_name']} -- {person}, {hours_int}h overdue")
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
 async def send_reminders(config: ScannerConfig) -> int:
     if not config.output.database_url:
         logger.warning("No DATABASE_URL configured")
@@ -128,32 +148,27 @@ async def send_reminders(config: ScannerConfig) -> int:
 
             logger.info("Found %d overdue items to remind", len(overdue))
 
+            # One bundled notification for the whole batch instead of one
+            # message per item. Mark every item reminded only if that single
+            # send succeeds, so a failure leaves them eligible next run.
             sent_ids: list[str] = []
+            text = format_reminder_digest(overdue)
             async with httpx.AsyncClient(timeout=10.0) as http:
-                for item in overdue:
-                    text = format_reminder(
-                        chat_name=item["chat_name"],
-                        priority=item["priority"],
-                        waiting_person=item["waiting_person"],
-                        hours_overdue=item["hours_overdue"],
-                        preview=item["preview"],
+                try:
+                    resp = await http.post(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        json={"chat_id": chat_id, "text": text},
                     )
-                    try:
-                        resp = await http.post(
-                            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                            json={"chat_id": chat_id, "text": text},
+                    if resp.is_success:
+                        sent_ids = [item["id"] for item in overdue]
+                        logger.info("Sent bundled reminder for %d items", len(overdue))
+                    else:
+                        logger.error(
+                            "Failed to send bundled reminder: status %d",
+                            resp.status_code,
                         )
-                        if resp.is_success:
-                            sent_ids.append(item["id"])
-                            logger.info("Sent reminder for %s", item["chat_name"])
-                        else:
-                            logger.error(
-                                "Failed to send reminder for %s: status %d",
-                                item["chat_name"],
-                                resp.status_code,
-                            )
-                    except httpx.HTTPError:
-                        logger.error("HTTP error sending reminder for %s", item["chat_name"])
+                except httpx.HTTPError:
+                    logger.error("HTTP error sending bundled reminder")
 
             # Mark reminded within the same transaction to keep reads and writes atomic
             if sent_ids:

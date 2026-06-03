@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from src.escalation import format_reminder, should_remind
+from src.escalation import format_reminder, format_reminder_digest, should_remind
 
 
 def test_should_remind_p0_overdue():
@@ -76,3 +76,32 @@ def test_format_reminder_no_preview():
     )
     assert "Someone" in text
     assert "Preview" not in text
+
+
+def test_format_reminder_digest_bundles_all_items():
+    items = [
+        {"chat_name": "Logic Protocol Core", "priority": "P0",
+         "waiting_person": "Marc", "hours_overdue": 26.5, "preview": "x"},
+        {"chat_name": "GHO Ops", "priority": "P1",
+         "waiting_person": None, "hours_overdue": 50.0, "preview": None},
+    ]
+    text = format_reminder_digest(items)
+    # A single message names every overdue chat
+    assert "Logic Protocol Core" in text
+    assert "GHO Ops" in text
+    assert "P0" in text
+    assert "P1" in text
+    assert "Someone" in text  # null waiting_person fallback
+    assert "2 overdue" in text
+
+
+def test_format_reminder_digest_groups_by_priority_order():
+    items = [
+        {"chat_name": "B chat", "priority": "P1",
+         "waiting_person": "Bob", "hours_overdue": 60.0, "preview": None},
+        {"chat_name": "A chat", "priority": "P0",
+         "waiting_person": "Ann", "hours_overdue": 30.0, "preview": None},
+    ]
+    text = format_reminder_digest(items)
+    # P0 section precedes P1 regardless of input order
+    assert text.index("P0") < text.index("P1")
