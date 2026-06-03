@@ -3,7 +3,6 @@
 import { OverdueAlerts } from "./overdue-alerts";
 import { SourceBreakdown } from "./source-breakdown";
 import { InboxHealth } from "./inbox-health";
-import { CalendarEvents } from "./calendar-events";
 import { ScannerStatus } from "./scanner-status";
 import { MiniAnalytics } from "./mini-analytics";
 import { RecentActivity } from "./recent-activity";
@@ -35,9 +34,6 @@ export function ContextSidebar({
       {/* Glass widgets — separated by margin */}
       <div className="pt-3 mb-3">
         <OverdueAlerts items={allItems} onSelectItem={onSelectItem} />
-      </div>
-      <div className="mb-3">
-        <CalendarEvents items={allItems} />
       </div>
       <div className="mb-3">
         <ScannerStatus

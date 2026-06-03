@@ -30,7 +30,7 @@ export function FilterPopover({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  const sources: Source[] = ["telegram", "notion", "calendar", "github"];
+  const sources: Source[] = ["telegram", "notion", "github"];
   const chatTypes = [
     { value: "dm", label: "DMs only" },
     { value: "group", label: "Groups only" },

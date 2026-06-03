@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-Source = Literal["telegram", "notion", "github", "calendar"]
+Source = Literal["telegram", "notion", "github"]
 Priority = Literal["P0", "P1", "P2", "P3"]
 Status = Literal["NEW", "READ_NO_REPLY", "REPLIED", "MONITORING"]
 ChatType = Literal["dm", "group"]

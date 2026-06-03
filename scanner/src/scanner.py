@@ -4,7 +4,6 @@ import json
 import logging
 from pathlib import Path
 
-from src.calendar_scanner import CalendarEvent, events_to_triage_items, fetch_calendar_events, find_related_chat_names, format_events_for_classifier
 from src.notion_scanner import (
     scan_notion,
     format_notion_items_for_classifier,
@@ -12,7 +11,7 @@ from src.notion_scanner import (
 )
 from src.classifier import Classifier
 from src.config import ScannerConfig
-from src.database import delete_calendar_items, get_previous_notion_items, push_to_database
+from src.database import get_previous_notion_items, push_to_database
 from src.digest import format_digest
 from src.models import PriorityStats, ScanResult, ScanStats, TriageItem
 from src.telegram_reader import TelegramReader
@@ -115,29 +114,6 @@ class Scanner:
                 if prev_context_by_name:
                     previous_context = prev_context_by_name
 
-            # 3b. Fetch calendar events (if enabled) -- before dedup early-return
-            # so calendar cards are always created
-            calendar_events: list[CalendarEvent] = []
-            calendar_items: list[TriageItem] = []
-            if self._config.calendar.enabled:
-                try:
-                    calendar_events = await fetch_calendar_events(
-                        credentials_path=Path(self._config.calendar.credentials_path),
-                        token_path=Path(self._config.calendar.token_path),
-                        days_ahead=self._config.calendar.days_ahead,
-                    )
-                    self._classifier.calendar_context = format_events_for_classifier(calendar_events)
-                    calendar_items = events_to_triage_items(calendar_events)
-                    logger.info("Calendar: %d events -> %d triage items", len(calendar_events), len(calendar_items))
-
-                    if calendar_events and conversations:
-                        all_chat_names = [c.dialog.name for c in conversations]
-                        related = find_related_chat_names(calendar_events, all_chat_names)
-                        if related:
-                            logger.info("Calendar: %d chats related to upcoming events: %s", len(related), related)
-                except Exception:
-                    logger.exception("Failed to fetch calendar events (continuing without)")
-
             # 3c. Fetch Notion items (if enabled)
             notion_rule_items: list[TriageItem] = []
             notion_mention_groups: dict[str, dict] = {}
@@ -187,13 +163,10 @@ class Scanner:
 
             if not conversations:
                 logger.info("No conversations need reclassification after dedup")
-                # Still include calendar items even when no Telegram chats need reclassifying
                 sources = ["telegram"]
-                if calendar_items:
-                    sources.append("calendar")
                 if notion_rule_items or notion_mention_groups:
                     sources.append("notion")
-                all_items = calendar_items + notion_rule_items
+                all_items = notion_rule_items
                 if notion_mention_groups:
                     all_items.extend(comments_to_triage_items(notion_mention_groups))
                 stats = self._compute_stats(all_items)
@@ -211,13 +184,8 @@ class Scanner:
                 output_path.write_text(result.model_dump_json(indent=2))
                 logger.info("Results written to %s", output_path)
 
-                # Push to database (calendar items only)
+                # Push to database
                 if self._config.output.database_url and all_items:
-                    if calendar_items:
-                        try:
-                            await delete_calendar_items(self._config.output.database_url)
-                        except Exception:
-                            logger.exception("Failed to delete old calendar items")
                     try:
                         await push_to_database(self._config.output.database_url, result)
                     except Exception:
@@ -232,8 +200,7 @@ class Scanner:
             items = await self._classifier.classify_all(conversations, my_name, previous_context)
             logger.info("Classified %d items", len(items))
 
-            # 6. Add calendar items + notion items + sort by priority
-            items.extend(calendar_items)
+            # 6. Add notion items + sort by priority
             items.extend(notion_rule_items)
             if notion_mention_groups:
                 items.extend(comments_to_triage_items(notion_mention_groups))
@@ -242,8 +209,6 @@ class Scanner:
 
             # 7. Build result
             sources = ["telegram"]
-            if calendar_events:
-                sources.append("calendar")
             if notion_rule_items or notion_mention_groups:
                 sources.append("notion")
             stats = self._compute_stats(items)
@@ -263,11 +228,6 @@ class Scanner:
 
             # 9. Push to database
             if self._config.output.database_url:
-                if calendar_items:
-                    try:
-                        await delete_calendar_items(self._config.output.database_url)
-                    except Exception:
-                        logger.exception("Failed to delete old calendar items")
                 try:
                     await push_to_database(self._config.output.database_url, result)
                 except Exception:

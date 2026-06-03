@@ -51,7 +51,7 @@ export async function getTriageItems(filters?: {
   const escapedSearch = (filters?.search ?? "").replace(/[%_\\]/g, "\\$&");
 
   // Get the most recent triage item per chat (DISTINCT ON chat_id for Telegram)
-  // Calendar items (chat_id IS NULL) use their own id as the dedup key
+  // Notion items (chat_id IS NULL) dedup by source_id; fall back to id
   const rows = await sql`
     SELECT * FROM (
       SELECT DISTINCT ON (COALESCE(chat_id::text, source_id, id::text)) *

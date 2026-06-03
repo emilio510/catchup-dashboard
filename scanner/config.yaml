@@ -114,12 +114,6 @@ output:
   digest_chat_id: 1744950707  # Your Telegram user ID (bot sends TO you)
   # digest_bot_token: set via DIGEST_BOT_TOKEN env var
 
-calendar:
-  enabled: true
-  credentials_path: credentials.json
-  token_path: token.json
-  days_ahead: 7
-
 escalation:
   P0: 24   # hours before reminder
   P1: 48

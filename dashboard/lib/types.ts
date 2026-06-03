@@ -1,7 +1,7 @@
 export type Priority = "P0" | "P1" | "P2" | "P3";
 export type Status = "NEW" | "READ_NO_REPLY" | "REPLIED" | "MONITORING";
 export type UserStatus = "open" | "done" | "snoozed";
-export type Source = "telegram" | "notion" | "github" | "calendar";
+export type Source = "telegram" | "notion" | "github";
 export type ChatType = "dm" | "group";
 
 export interface TriageItem {
@@ -55,5 +55,4 @@ export const SOURCE_CONFIG: Record<Source, { label: string; color: string }> = {
   telegram: { label: "TG", color: "#2AABEE" },
   notion: { label: "Notion", color: "#7c3aed" },
   github: { label: "GH", color: "#e2e8f0" },
-  calendar: { label: "Cal", color: "#4ade80" },
 };

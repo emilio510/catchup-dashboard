@@ -5,7 +5,7 @@ interface SourceBadgeProps {
 }
 
 export function SourceBadge({ source }: SourceBadgeProps) {
-  const config = SOURCE_CONFIG[source];
+  const config = SOURCE_CONFIG[source] ?? { label: source, color: "var(--color-text-ghost)" };
   return (
     <span
       className="inline-flex whitespace-nowrap rounded-[3px] px-[5px] py-px font-mono text-[9px] font-medium tracking-[0.04em]"

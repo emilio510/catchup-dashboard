@@ -312,7 +312,7 @@ def test_system_prompt_requires_addressed_to_user_field():
 
 def test_classifier_wires_config_aliases_and_topics_to_prompt():
     """Verify that Classifier passes config aliases/topics to build_classification_prompt."""
-    from src.config import ScannerConfig, ClassificationConfig, ScanConfig, TelegramConfig, OutputConfig, CalendarConfig, EscalationConfig, NotionConfig
+    from src.config import ScannerConfig, ClassificationConfig, ScanConfig, TelegramConfig, OutputConfig, EscalationConfig, NotionConfig
 
     config = ScannerConfig(
         scan=ScanConfig(),
@@ -324,7 +324,6 @@ def test_classifier_wires_config_aliases_and_topics_to_prompt():
             topics_owned=["Aave", "GHO"],
         ),
         output=OutputConfig(),
-        calendar=CalendarConfig(),
         escalation=EscalationConfig(),
         notion=NotionConfig(),
     )
